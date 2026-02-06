@@ -238,12 +238,11 @@ impl Label {
                 locale: None,
             }),
             3 => {
-                // Try to parse locale
-                let locale_str = parts[2].to_uppercase();
+                // Parse locale (simplified for now)
                 Some(Label {
                     provider: parts[0].to_string(),
                     method: parts[1].to_string(),
-                    locale: Some(Locale::Universal), // Simplified for now
+                    locale: Some(Locale::Universal),
                 })
             }
             _ => None,

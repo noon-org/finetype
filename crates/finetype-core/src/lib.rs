@@ -7,5 +7,5 @@ pub mod generator;
 pub mod tokenizer;
 
 pub use taxonomy::{Definition, Designation, Label, Locale, Taxonomy};
-pub use generator::Generator;
+pub use generator::{Generator, Sample};
 pub use tokenizer::Tokenizer;
