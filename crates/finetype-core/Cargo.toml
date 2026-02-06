@@ -1,0 +1,20 @@
+[package]
+name = "finetype-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Core taxonomy and data generation for FineType"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tokenizers = { workspace = true }
+fakeit = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+rand = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = "1.4"

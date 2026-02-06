@@ -1,0 +1,26 @@
+[package]
+name = "finetype-model"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Candle-based transformer model for FineType"
+
+[features]
+default = ["cpu"]
+cpu = []
+cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
+metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
+
+[dependencies]
+finetype-core = { workspace = true }
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
+candle-transformers = { workspace = true }
+tokenizers = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
