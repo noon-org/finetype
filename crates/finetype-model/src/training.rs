@@ -6,8 +6,6 @@ use candle_nn::{AdamW, Optimizer, ParamsAdamW, VarBuilder, VarMap};
 use finetype_core::{Sample, Taxonomy, Tokenizer};
 use std::path::Path;
 use thiserror::Error;
-use tracing::info;
-
 #[derive(Error, Debug)]
 pub enum TrainingError {
     #[error("Model error: {0}")]
@@ -64,13 +62,17 @@ impl Trainer {
         samples: &[Sample],
         output_dir: &Path,
     ) -> Result<(), TrainingError> {
-        info!("Starting training with {} samples", samples.len());
+        eprintln!("Starting training with {} samples", samples.len());
+        eprintln!("Device: {:?}", self.device);
         
         // Create label mapping
+        eprintln!("Creating label mapping...");
         let label_to_index = taxonomy.label_to_index();
         let n_classes = taxonomy.len();
+        eprintln!("Number of classes: {}", n_classes);
         
         // Initialize model
+        eprintln!("Initializing model...");
         let varmap = VarMap::new();
         let vb = VarBuilder::from_varmap(&varmap, DType::F32, &self.device);
         
@@ -81,7 +83,11 @@ impl Trainer {
         };
         
         let model = TextClassifier::new(model_config, vb)?;
+        eprintln!("Model initialized");
+        
+        eprintln!("Loading tokenizer...");
         let tokenizer = Tokenizer::bert_cased()?;
+        eprintln!("Tokenizer loaded");
         
         // Create optimizer
         let params = ParamsAdamW {
@@ -93,8 +99,10 @@ impl Trainer {
         
         // Training loop
         let num_batches = (samples.len() + self.config.batch_size - 1) / self.config.batch_size;
+        eprintln!("Training: {} batches per epoch", num_batches);
         
         for epoch in 0..self.config.epochs {
+            eprintln!("Starting epoch {}/{}", epoch + 1, self.config.epochs);
             let mut total_loss = 0.0;
             let mut num_correct = 0;
             let mut num_total = 0;
@@ -133,12 +141,18 @@ impl Trainer {
                     .to_scalar::<f32>()?;
                 num_correct += correct as usize;
                 num_total += batch.len();
+                
+                // Print progress every 10 batches
+                if (batch_idx + 1) % 10 == 0 || batch_idx == num_batches - 1 {
+                    eprint!("\r  Batch {}/{}, loss={:.4}        ", batch_idx + 1, num_batches, loss_val);
+                }
             }
+            eprintln!();
             
             let avg_loss = total_loss / num_batches as f32;
             let accuracy = num_correct as f32 / num_total as f32;
             
-            info!(
+            eprintln!(
                 "Epoch {}/{}: loss={:.4}, accuracy={:.2}%",
                 epoch + 1,
                 self.config.epochs,
@@ -148,10 +162,11 @@ impl Trainer {
         }
         
         // Save model
+        eprintln!("Saving model to {:?}", output_dir);
         std::fs::create_dir_all(output_dir)?;
         varmap.save(output_dir.join("model.safetensors"))?;
         
-        info!("Model saved to {:?}", output_dir);
+        eprintln!("Model saved to {:?}", output_dir);
         
         Ok(())
     }

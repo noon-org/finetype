@@ -87,13 +87,14 @@ impl TransformerEncoderLayer {
         let v = self.self_attn_v.forward(x)?;
         
         // Reshape for multi-head attention
-        let q = q.reshape((batch_size, seq_len, self.n_heads, head_dim))?.transpose(1, 2)?;
-        let k = k.reshape((batch_size, seq_len, self.n_heads, head_dim))?.transpose(1, 2)?;
-        let v = v.reshape((batch_size, seq_len, self.n_heads, head_dim))?.transpose(1, 2)?;
+        let q = q.reshape((batch_size, seq_len, self.n_heads, head_dim))?.transpose(1, 2)?.contiguous()?;
+        let k = k.reshape((batch_size, seq_len, self.n_heads, head_dim))?.transpose(1, 2)?.contiguous()?;
+        let v = v.reshape((batch_size, seq_len, self.n_heads, head_dim))?.transpose(1, 2)?.contiguous()?;
         
         // Scaled dot-product attention
         let scale = (head_dim as f64).sqrt();
-        let attn_weights = (q.matmul(&k.transpose(2, 3)?)? / scale)?;
+        let k_t = k.transpose(2, 3)?.contiguous()?;
+        let attn_weights = (q.matmul(&k_t)? / scale)?;
         
         // Note: Mask handling simplified for initial implementation
         // TODO: Implement proper attention masking
@@ -105,6 +106,7 @@ impl TransformerEncoderLayer {
         // Reshape back
         let attn_output = attn_output
             .transpose(1, 2)?
+            .contiguous()?
             .reshape((batch_size, seq_len, self.d_model))?;
         let attn_output = self.self_attn_out.forward(&attn_output)?;
         

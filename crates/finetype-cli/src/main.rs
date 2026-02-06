@@ -290,19 +290,50 @@ fn cmd_train(
     output: PathBuf,
     epochs: usize,
     batch_size: usize,
-    device: String,
+    _device: String,
 ) -> Result<()> {
-    eprintln!("Training not yet fully implemented");
-    eprintln!("Data: {:?}", data);
-    eprintln!("Taxonomy: {:?}", taxonomy_path);
-    eprintln!("Output: {:?}", output);
-    eprintln!("Epochs: {}", epochs);
-    eprintln!("Batch size: {}", batch_size);
-    eprintln!("Device: {}", device);
+    use finetype_core::Sample;
+    use finetype_model::{Trainer, TrainingConfig};
+    use std::io::BufRead;
 
-    // TODO: Implement full training loop
-    // For now, this is a placeholder
+    eprintln!("Loading taxonomy from {:?}", taxonomy_path);
+    let taxonomy = Taxonomy::from_file(&taxonomy_path)?;
+    eprintln!("Loaded {} label definitions", taxonomy.len());
 
+    eprintln!("Loading training data from {:?}", data);
+    let file = std::fs::File::open(&data)?;
+    let reader = std::io::BufReader::new(file);
+    
+    let mut samples = Vec::new();
+    for line in reader.lines() {
+        let line = line?;
+        if line.is_empty() {
+            continue;
+        }
+        let record: serde_json::Value = serde_json::from_str(&line)?;
+        let text = record["text"].as_str().unwrap_or("").to_string();
+        let label = record["classification"].as_str().unwrap_or("").to_string();
+        samples.push(Sample { text, label });
+    }
+    eprintln!("Loaded {} training samples", samples.len());
+
+    // Create training config
+    let config = TrainingConfig {
+        batch_size,
+        epochs,
+        learning_rate: 1e-4,
+        max_seq_length: 128, // Shorter for faster training
+        warmup_steps: 100,
+        weight_decay: 0.01,
+    };
+
+    eprintln!("Training config: {:?}", config);
+    eprintln!("Starting training...");
+
+    let trainer = Trainer::new(config);
+    trainer.train(&taxonomy, &samples, &output)?;
+
+    eprintln!("Training complete! Model saved to {:?}", output);
     Ok(())
 }
 
