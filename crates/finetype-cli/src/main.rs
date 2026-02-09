@@ -48,6 +48,10 @@ enum Commands {
         /// Include input value in output
         #[arg(short, long)]
         value: bool,
+        
+        /// Model type (transformer, char_cnn)
+        #[arg(long, default_value = "char-cnn")]
+        model_type: ModelType,
     },
 
     /// Generate synthetic training data
@@ -98,6 +102,10 @@ enum Commands {
         /// Device (cpu, cuda, metal)
         #[arg(long, default_value = "cpu")]
         device: String,
+        
+        /// Model type (transformer, char_cnn)
+        #[arg(long, default_value = "transformer")]
+        model_type: ModelType,
     },
 
     /// Show taxonomy information
@@ -127,6 +135,12 @@ enum OutputFormat {
     Csv,
 }
 
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum ModelType {
+    Transformer,
+    CharCnn,
+}
+
 fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt()
@@ -143,7 +157,8 @@ fn main() -> Result<()> {
             output,
             confidence,
             value,
-        } => cmd_infer(input, file, model, output, confidence, value),
+            model_type,
+        } => cmd_infer(input, file, model, output, confidence, value, model_type),
 
         Commands::Generate {
             samples,
@@ -160,7 +175,8 @@ fn main() -> Result<()> {
             epochs,
             batch_size,
             device,
-        } => cmd_train(data, taxonomy, output, epochs, batch_size, device),
+            model_type,
+        } => cmd_train(data, taxonomy, output, epochs, batch_size, device, model_type),
 
         Commands::Taxonomy {
             file,
@@ -178,7 +194,10 @@ fn cmd_infer(
     output: OutputFormat,
     show_confidence: bool,
     show_value: bool,
+    model_type: ModelType,
 ) -> Result<()> {
+    use finetype_model::{CharClassifier, ClassificationResult};
+    
     // Collect inputs
     let inputs: Vec<String> = if let Some(text) = input {
         vec![text]
@@ -203,13 +222,14 @@ fn cmd_infer(
         return Ok(());
     }
 
-    // Load classifier
-    let classifier = Classifier::load(&model)?;
-
-    // Classify
-    for text in inputs {
-        let result = classifier.classify(&text)?;
-
+    // Helper to output result
+    fn output_result(
+        text: &str,
+        result: &ClassificationResult,
+        output: OutputFormat,
+        show_value: bool,
+        show_confidence: bool,
+    ) {
         match output {
             OutputFormat::Plain => {
                 if show_value && show_confidence {
@@ -243,6 +263,23 @@ fn cmd_infer(
                 } else {
                     println!("\"{}\"", result.label);
                 }
+            }
+        }
+    }
+
+    match model_type {
+        ModelType::Transformer => {
+            let classifier = Classifier::load(&model)?;
+            for text in inputs {
+                let result = classifier.classify(&text)?;
+                output_result(&text, &result, output, show_value, show_confidence);
+            }
+        }
+        ModelType::CharCnn => {
+            let classifier = CharClassifier::load(&model)?;
+            for text in inputs {
+                let result = classifier.classify(&text)?;
+                output_result(&text, &result, output, show_value, show_confidence);
             }
         }
     }
@@ -291,9 +328,9 @@ fn cmd_train(
     epochs: usize,
     batch_size: usize,
     _device: String,
+    model_type: ModelType,
 ) -> Result<()> {
     use finetype_core::Sample;
-    use finetype_model::{Trainer, TrainingConfig};
     use std::io::BufRead;
 
     eprintln!("Loading taxonomy from {:?}", taxonomy_path);
@@ -317,21 +354,47 @@ fn cmd_train(
     }
     eprintln!("Loaded {} training samples", samples.len());
 
-    // Create training config
-    let config = TrainingConfig {
-        batch_size,
-        epochs,
-        learning_rate: 1e-4,
-        max_seq_length: 128, // Shorter for faster training
-        warmup_steps: 100,
-        weight_decay: 0.01,
-    };
+    match model_type {
+        ModelType::Transformer => {
+            use finetype_model::{Trainer, TrainingConfig};
+            
+            let config = TrainingConfig {
+                batch_size,
+                epochs,
+                learning_rate: 1e-4,
+                max_seq_length: 128,
+                warmup_steps: 100,
+                weight_decay: 0.01,
+            };
 
-    eprintln!("Training config: {:?}", config);
-    eprintln!("Starting training...");
+            eprintln!("Training Transformer model");
+            eprintln!("Training config: {:?}", config);
 
-    let trainer = Trainer::new(config);
-    trainer.train(&taxonomy, &samples, &output)?;
+            let trainer = Trainer::new(config);
+            trainer.train(&taxonomy, &samples, &output)?;
+        }
+        ModelType::CharCnn => {
+            use finetype_model::{CharTrainer, CharTrainingConfig};
+            
+            let config = CharTrainingConfig {
+                batch_size,
+                epochs,
+                learning_rate: 1e-3, // Higher LR for CNN
+                max_seq_length: 128,
+                embed_dim: 32,
+                num_filters: 64,
+                hidden_dim: 128,
+                weight_decay: 1e-4,
+                shuffle: true,
+            };
+
+            eprintln!("Training CharCNN model");
+            eprintln!("Training config: {:?}", config);
+
+            let trainer = CharTrainer::new(config);
+            trainer.train(&taxonomy, &samples, &output)?;
+        }
+    }
 
     eprintln!("Training complete! Model saved to {:?}", output);
     Ok(())
