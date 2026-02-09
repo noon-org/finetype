@@ -1,0 +1,431 @@
+# FineType v2 — Container Domain Definitions
+#
+# Hierarchy: domain.category.type (locale is a field, not in the key)
+# Full label at inference time: domain.category.type.LOCALE
+#
+# Each definition is a transformation contract:
+#   - broad_type:     Target DuckDB type
+#   - format_string:  DuckDB strptime format (null if not strptime-based)
+#   - transform:      DuckDB SQL expression ({col} = column placeholder)
+#   - transform_ext:  Enhanced transform requiring a DuckDB extension
+#   - validation:     JSON Schema fragment for data quality checks
+#   - tier:           Path from root to parent in the inference graph
+#   - decompose:      Optional struct expansion for multi-field output
+#
+# Container domain covers:
+#   - serialized data formats (JSON, XML, YAML, CSV)
+#   - nested data structures (objects, arrays)
+#   - recursive type inference on nested values
+#
+# IMPORTANT: Container types trigger RECURSIVE TYPE INFERENCE
+# When a column is classified as container.object.json, FineType will:
+# 1. Parse JSON and iterate over fields
+# 2. Apply classification to each field value
+# 3. Return a struct with typed fields
+# ─────────────────────────────────────────────────────────────────────
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: object
+#
+# Object/record formats (JSON, XML, YAML, TOML, etc.)
+# These are containers with structured key-value data that supports
+# recursive type inference on nested fields.
+# ═════════════════════════════════════════════════════════════════════
+
+container.object.json:
+  title: "JSON Object"
+  description: >
+    JavaScript Object Notation (JSON) object stored as VARCHAR.
+    Represents structured key-value data that may be nested.
+
+    RECURSIVE INFERENCE:
+    When classified as container.object.json, FineType will parse the JSON
+    and attempt to classify each field value independently. Nested objects
+    trigger recursive classification.
+
+    Example:
+      Input:  {"user": "john", "age": 30, "active": true}
+      Output: Struct<user VARCHAR, age BIGINT, active BOOLEAN>
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: JSON
+  format_string: null
+  transform: "PARSE_JSON({col})"
+  transform_ext: null
+  decompose: "RECURSIVE_INFER_ON_FIELDS({col})"
+  validation:
+    type: string
+    pattern: "^\\{.*\\}$"
+  tier: [JSON, object]
+  release_priority: 3
+  aliases: [json_object]
+  samples:
+    - '{"user": "john", "age": 30}'
+    - '{"name": "Alice", "email": "alice@example.com", "active": true}'
+    - '{"nested": {"key": "value"}}'
+  references: null
+  notes: >
+    v1 migration: New for v2. JSON objects stored as VARCHAR strings.
+    CRITICAL: Classification triggers recursive field-level inference.
+    Set release_priority to 3 (medium) due to complexity of recursive inference.
+    DuckDB JSON type allows NULL, arrays, objects, and scalar values.
+
+container.object.json_array:
+  title: "JSON Array"
+  description: >
+    JSON array format: [val1, val2, val3, ...].
+    May contain objects, scalars, or nested arrays.
+
+    RECURSIVE INFERENCE:
+    When classified as container.object.json_array, FineType will:
+    1. Parse the array
+    2. Sample elements to infer a common element type
+    3. Return an array of that inferred type
+
+    Example:
+      Input:  [1, 2, 3, 4, 5]
+      Output: LIST<BIGINT>
+
+      Input:  [{"id": 1}, {"id": 2}]
+      Output: LIST<STRUCT<id BIGINT>>
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: JSON
+  format_string: null
+  transform: "PARSE_JSON({col})"
+  transform_ext: null
+  decompose: "RECURSIVE_INFER_ON_ARRAY_ELEMENTS({col})"
+  validation:
+    type: string
+    pattern: "^\\[.*\\]$"
+  tier: [JSON, object]
+  release_priority: 2
+  aliases: [json_list, array]
+  samples:
+    - "[1, 2, 3]"
+    - '["a", "b", "c"]'
+    - '[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]'
+  references: null
+  notes: >
+    v1 migration: New for v2. JSON arrays stored as VARCHAR.
+    Recursive inference may fail if array elements are heterogeneous
+    (mixed types). In such cases, returns LIST<JSON> (untyped list).
+
+container.object.xml:
+  title: "XML Document"
+  description: >
+    XML (Extensible Markup Language) document stored as VARCHAR.
+    Structured hierarchical data with tags and attributes.
+
+    RECURSIVE INFERENCE:
+    When classified as container.object.xml, FineType will:
+    1. Parse XML and identify root element
+    2. Extract and classify child element values
+    3. Return as nested struct (partial, may require schema)
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: "XMLPARSE(DOCUMENT {col})"
+  decompose: "RECURSIVE_INFER_ON_XML_CHILDREN({col})"
+  validation:
+    type: string
+    pattern: "^<.*>.*</.*>$"
+  tier: [VARCHAR, object]
+  release_priority: 1
+  aliases: [xml_document]
+  samples:
+    - '<root><name>John</name><age>30</age></root>'
+    - '<user id="123"><email>john@example.com</email></user>'
+  references: null
+  notes: >
+    v1 migration: New for v2. XML is less common in modern data pipelines.
+    Release priority 1 (low) due to complexity and decreasing adoption.
+    DuckDB has limited native XML support (xmlparse requires extension).
+    Recursive inference may be partial.
+
+container.object.yaml:
+  title: "YAML Document"
+  description: >
+    YAML (YAML Ain't Markup Language) document stored as VARCHAR.
+    Human-readable data serialization format with nested indentation.
+
+    RECURSIVE INFERENCE:
+    When classified as container.object.yaml, FineType will:
+    1. Parse YAML text
+    2. Classify each value (may be nested)
+    3. Return as struct (complex nested structures may fail)
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: "RECURSIVE_INFER_ON_YAML_STRUCTURE({col})"
+  validation:
+    type: string
+    pattern: "^[a-zA-Z_][a-zA-Z0-9_]*:\\s*.*"
+  tier: [VARCHAR, object]
+  release_priority: 1
+  aliases: [yaml]
+  samples:
+    - "name: John\nage: 30\nactive: true"
+    - "user:\n  id: 123\n  email: john@example.com"
+  references: null
+  notes: >
+    v1 migration: New for v2. YAML is common in configuration files
+    but less common in analytics data. Release priority 1 (low).
+    DuckDB does not have native YAML support; parsing requires
+    external crates and is slower than JSON.
+
+container.object.csv:
+  title: "CSV Record"
+  description: >
+    Single CSV record or row stored as a delimited string.
+    Format: value1,value2,value3 (may include quoted values).
+
+    RECURSIVE INFERENCE:
+    When classified as container.object.csv, FineType requires a schema
+    (column names and types). With schema, parses and types each value.
+    Without schema, returns unparsed CSV string.
+
+    NOTE: CSV classification is rare for individual records.
+    More common to classify at the column level (entire CSV file as one string).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: "RECURSIVE_INFER_ON_CSV_COLUMNS({col})"
+  validation:
+    type: string
+    pattern: "^[^,]+(,[^,]+)*$"
+  tier: [VARCHAR, object]
+  release_priority: 1
+  aliases: [csv_row, delimited_record]
+  samples:
+    - "John,30,true"
+    - '"Smith, John",30,Engineer'
+  references: null
+  notes: >
+    v1 migration: New for v2. CSV is typically a multi-row format,
+    but may appear as individual records in some contexts.
+    Release priority 1. Parsing requires explicit schema.
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: array
+#
+# Simple and complex array/list formats.
+# ═════════════════════════════════════════════════════════════════════
+
+container.array.comma_separated:
+  title: "Comma-Separated Values (Simple)"
+  description: >
+    Simple list of comma-separated values (not JSON array, plain CSV).
+    Example: "apple,banana,cherry"
+
+    RECURSIVE INFERENCE:
+    Samples elements and infers common type, returns LIST<inferred_type>.
+    If all elements parse as integers, returns LIST<BIGINT>.
+    If mixed types, returns LIST<VARCHAR>.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: "STRING_SPLIT({col}, ',')"
+  validation:
+    type: string
+    pattern: "^[^,]+(,[^,]+)*$"
+  tier: [VARCHAR, array]
+  release_priority: 3
+  aliases: [csv_simple, comma_list]
+  samples:
+    - "apple,banana,cherry"
+    - "1,2,3,4,5"
+    - "red,green,blue"
+  references: null
+  notes: >
+    v1 migration: New for v2. Simple comma-separated list (not JSON).
+    Decompose splits on comma. Recursive inference samples to determine
+    element type.
+
+container.array.pipe_separated:
+  title: "Pipe-Separated Values"
+  description: >
+    List separated by pipe character: value1|value2|value3.
+    Similar to CSV but uses pipe as delimiter.
+
+    RECURSIVE INFERENCE:
+    Samples elements and infers common type, returns LIST<inferred_type>.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: "STRING_SPLIT({col}, '|')"
+  validation:
+    type: string
+    pattern: "^[^|]+(\\|[^|]+)*$"
+  tier: [VARCHAR, array]
+  release_priority: 2
+  aliases: [pipe_list]
+  samples:
+    - "apple|banana|cherry"
+    - "1|2|3|4|5"
+  references: null
+  notes: >
+    v1 migration: New for v2. Pipe-separated format common in
+    legacy databases and log files. Decompose splits on pipe.
+
+container.array.semicolon_separated:
+  title: "Semicolon-Separated Values"
+  description: >
+    List separated by semicolon: value1;value2;value3.
+    Common in European CSV exports (where comma is decimal separator).
+
+    RECURSIVE INFERENCE:
+    Samples elements and infers common type, returns LIST<inferred_type>.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: "STRING_SPLIT({col}, ';')"
+  validation:
+    type: string
+    pattern: "^[^;]+(;[^;]+)*$"
+  tier: [VARCHAR, array]
+  release_priority: 2
+  aliases: [semicolon_list]
+  samples:
+    - "apple;banana;cherry"
+    - "1,5;2,3;4,7"
+  references: null
+  notes: >
+    v1 migration: New for v2. Semicolon separator common in Europe
+    (RFC 4180 variant with comma as decimal). Decompose splits on semicolon.
+
+container.array.whitespace_separated:
+  title: "Whitespace-Separated Values"
+  description: >
+    List separated by spaces or tabs: value1 value2 value3.
+    Example: "one two three" or "1 2 3 4 5".
+
+    RECURSIVE INFERENCE:
+    Samples elements and infers common type, returns LIST<inferred_type>.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: "STRING_SPLIT(TRIM({col}), '\\s+')"
+  validation:
+    type: string
+    pattern: "^[^\\s]+(\\s+[^\\s]+)*$"
+  tier: [VARCHAR, array]
+  release_priority: 2
+  aliases: [space_separated, space_list]
+  samples:
+    - "apple banana cherry"
+    - "1 2 3 4 5"
+    - "red\tgreen\tblue"
+  references: null
+  notes: >
+    v1 migration: New for v2. Whitespace separator common in
+    plain-text logs and Unix tools. Regex split on whitespace.
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: key_value
+#
+# Key-value pair formats (simple string representation).
+# ═════════════════════════════════════════════════════════════════════
+
+container.key_value.query_string:
+  title: "Query String Parameters"
+  description: >
+    URL query string format: key1=value1&key2=value2.
+    Commonly found in URLs and HTTP POST bodies.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: "RECURSIVE_PARSE_QUERY_STRING({col})"
+  validation:
+    type: string
+    pattern: "^[^=&]+=([^&]*)(&[^=&]+=[^&]*)*$"
+  tier: [VARCHAR, key_value]
+  release_priority: 3
+  aliases: null
+  samples:
+    - "name=John&age=30&city=NewYork"
+    - "q=python&page=1"
+    - "user_id=123&token=abc123xyz"
+  references: null
+  notes: >
+    v1 migration: New for v2. URL query string format.
+    Values are typically URL-encoded. Recursive inference parses
+    key-value pairs and types each value independently.
+
+container.key_value.form_data:
+  title: "Form Data"
+  description: >
+    HTML form data in application/x-www-form-urlencoded format.
+    Similar to query string: key1=value1&key2=value2.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: "RECURSIVE_PARSE_FORM_DATA({col})"
+  validation:
+    type: string
+    pattern: "^[^=&]+=([^&]*)(&[^=&]+=[^&]*)*$"
+  tier: [VARCHAR, key_value]
+  release_priority: 2
+  aliases: null
+  samples:
+    - "username=john&password=secret"
+    - "email=user@example.com&subscribe=yes"
+  references: null
+  notes: >
+    v1 migration: New for v2. Form data is identical format to query string.
+    Distinction is semantic (form submission vs URL parameters).
+    Release priority 2 (slightly higher than query_string in modern contexts).
+
+# ═════════════════════════════════════════════════════════════════════
+# Tiering Notes:
+# ─────────────────────────────────────────────────────────────────────
+#
+# Container types are classified as Tier 1 or Tier 2 depending on
+# inference complexity:
+#
+# Tier 1 (High Release Priority):
+#   - container.object.json (most common, well-standardized)
+#   - container.object.json_array (common in APIs)
+#   - container.array.comma_separated (simple, clear)
+#
+# Tier 2 (Medium Release Priority):
+#   - container.key_value.query_string (common but parsing required)
+#   - container.array.pipe_separated
+#   - container.array.semicolon_separated
+#
+# Tier 2+ (Lower Priority):
+#   - container.object.xml, yaml, csv (complex, less common)
+#   - container.key_value.form_data
+#
+# Recursive Inference Requirements:
+#   - All container types MUST implement field/element-level classification
+#   - Heterogeneous arrays default to LIST<JSON> or LIST<VARCHAR>
+#   - Nested objects/arrays should be classified recursively
+#   - Deep nesting (>3 levels) may be truncated or marked as broad_object
+# ═════════════════════════════════════════════════════════════════════

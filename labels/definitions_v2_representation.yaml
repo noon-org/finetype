@@ -1,0 +1,677 @@
+# FineType v2 — Representation Domain Definitions
+#
+# Hierarchy: domain.category.type (locale is a field, not in the key)
+# Full label at inference time: domain.category.type.LOCALE
+#
+# Each definition is a transformation contract:
+#   - broad_type:     Target DuckDB type
+#   - format_string:  DuckDB strptime format (null if not strptime-based)
+#   - transform:      DuckDB SQL expression ({col} = column placeholder)
+#   - transform_ext:  Enhanced transform requiring a DuckDB extension
+#   - validation:     JSON Schema fragment for data quality checks
+#   - tier:           Path from root to parent in the inference graph
+#   - decompose:      Optional struct expansion for multi-field output
+#
+# Representation domain covers:
+#   - numeric formats (integers, decimals, scientific notation)
+#   - text representations (colors, text, markdown)
+#   - file metadata (extensions, MIME types, file sizes)
+#   - scientific data (DNA/RNA sequences, measurement units)
+# ─────────────────────────────────────────────────────────────────────
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: numeric
+#
+# Numeric data types and representations.
+# ═════════════════════════════════════════════════════════════════════
+
+representation.numeric.integer_number:
+  title: "Integer Number"
+  description: >
+    Whole number without fractional part. String representation of an integer.
+    Transforms to BIGINT or INTEGER depending on value range.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: BIGINT
+  format_string: null
+  transform: "CAST({col} AS BIGINT)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^-?[0-9]+$"
+  tier: [BIGINT, numeric]
+  release_priority: 5
+  aliases: [integer, whole_number]
+  samples:
+    - "42"
+    - "-17"
+    - "0"
+    - "999999999"
+  references: null
+  notes: >
+    v1 migration: Was numeric.integer_number. Converts to BIGINT.
+    Includes negative numbers. Pattern is simple integer format.
+
+representation.numeric.decimal_number:
+  title: "Decimal Number"
+  description: >
+    Number with decimal point (e.g., 3.14, -0.5, 1000.001).
+    String representation of a floating-point number.
+    Transforms to DOUBLE.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DOUBLE
+  format_string: null
+  transform: "CAST({col} AS DOUBLE)"
+  transform_ext: null
+  decompose:
+    integer_part: "CAST(FLOOR(CAST({col} AS DOUBLE)) AS BIGINT)"
+    fractional_part: "CAST((CAST({col} AS DOUBLE) - FLOOR(CAST({col} AS DOUBLE))) * 1000000 AS BIGINT)"
+  validation:
+    type: string
+    pattern: "^-?[0-9]+(\\.[0-9]+)?$"
+  tier: [DOUBLE, numeric]
+  release_priority: 5
+  aliases: [decimal, float, floating_point]
+  samples:
+    - "3.14"
+    - "-0.5"
+    - "1000.001"
+    - "0.0001"
+  references: null
+  notes: >
+    v1 migration: Was numeric.decimal_number. Transforms to DOUBLE.
+    Decompose extracts integer and fractional parts.
+
+representation.numeric.scientific_notation:
+  title: "Scientific Notation"
+  description: >
+    Number in scientific notation (e.g., 1.23e-4, 5E+6, 3.14e10).
+    Transforms to DOUBLE.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DOUBLE
+  format_string: null
+  transform: "CAST({col} AS DOUBLE)"
+  transform_ext: null
+  decompose:
+    mantissa: "CAST(REGEXP_EXTRACT({col}, '^([0-9.+-]+)e') AS DOUBLE)"
+    exponent: "CAST(REGEXP_EXTRACT({col}, 'e([+-]?[0-9]+)$') AS SMALLINT)"
+  validation:
+    type: string
+    pattern: "^-?[0-9]+(\\.[0-9]+)?[eE][+-]?[0-9]+$"
+  tier: [DOUBLE, numeric]
+  release_priority: 3
+  aliases: [scientific, exponential]
+  samples:
+    - "1.23e-4"
+    - "5E+6"
+    - "3.14e10"
+    - "-2.5e-3"
+  references: null
+  notes: >
+    v1 migration: New for v2. Covers scientific notation like 1.23e-4.
+    Decompose extracts mantissa and exponent.
+
+representation.numeric.percentage:
+  title: "Percentage"
+  description: >
+    Number as a percentage (e.g., 50%, 99.99%, 0.5%).
+    May include % symbol or decimal representation. Transforms to DOUBLE (0-100).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DOUBLE
+  format_string: null
+  transform: "CAST(REGEXP_EXTRACT({col}, '^(-?[0-9]+(\\.[0-9]+)?)') AS DOUBLE)"
+  transform_ext: null
+  decompose:
+    percent_value: "CAST(REGEXP_EXTRACT({col}, '^(-?[0-9]+(\\.[0-9]+)?)') AS DOUBLE)"
+    has_symbol: "CASE WHEN {col} LIKE '%\"%' THEN TRUE ELSE FALSE END"
+  validation:
+    type: string
+    pattern: "^-?[0-9]+(\\.[0-9]+)?%?$"
+  tier: [DOUBLE, numeric]
+  release_priority: 3
+  aliases: [percent]
+  samples:
+    - "50%"
+    - "99.99%"
+    - "0.5%"
+    - "100"
+  references: null
+  notes: >
+    v1 migration: New for v2. Percentage as string representation.
+    Transform extracts numeric value (0-100 range expected).
+
+representation.numeric.increment:
+  title: "Increment / Counter"
+  description: >
+    Counter value that increases by fixed steps (often 1). May appear as
+    row numbers, sequence IDs, or generation numbers.
+    Broad categorization.
+  designation: broad_numbers
+  locales: [UNIVERSAL]
+  broad_type: BIGINT
+  format_string: null
+  transform: "CAST({col} AS BIGINT)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[0-9]+$"
+  tier: [BIGINT, numeric]
+  release_priority: 1
+  aliases: [counter, sequence, id]
+  samples:
+    - "1"
+    - "2"
+    - "3"
+  references: null
+  notes: >
+    v1 migration: Was numeric.increment marked broad_numbers. Often appears as
+    auto-incrementing primary keys or row numbers. Difficult to distinguish from
+    regular integers without column context.
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: text
+#
+# Text representations, colors, symbols, and linguistic data.
+# ═════════════════════════════════════════════════════════════════════
+
+representation.text.plain_text:
+  title: "Plain Text"
+  description: >
+    Unstructured text content (sentences, paragraphs, descriptions).
+    Broad categorization.
+  designation: broad_characters
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose:
+    word_count: "CAST(REGEXP_COUNT({col}, '\\s+') + 1 AS SMALLINT)"
+    char_count: "LENGTH({col})"
+  validation:
+    type: string
+    minLength: 1
+    maxLength: 65536
+  tier: [VARCHAR, text]
+  release_priority: 0
+  aliases: [text, description, content]
+  samples:
+    - "This is a plain text description"
+    - "A longer paragraph with multiple sentences"
+    - "Single word"
+  references: null
+  notes: >
+    v1 migration: Was text.text marked broad_characters. Very broad category
+    with low release priority. Distinguishing from other text types (sentence,
+    word, etc.) requires statistical analysis.
+
+representation.text.sentence:
+  title: "Sentence"
+  description: >
+    Grammatically complete sentence (one or more words, ending with punctuation).
+  designation: broad_characters
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose:
+    word_count: "CAST(REGEXP_COUNT({col}, '\\s+') + 1 AS SMALLINT)"
+  validation:
+    type: string
+    minLength: 3
+    maxLength: 1000
+    pattern: "^[A-Z].*[.!?]$"
+  tier: [VARCHAR, text]
+  release_priority: 1
+  aliases: null
+  samples:
+    - "This is a complete sentence."
+    - "Is this a question?"
+    - "What an exclamation!"
+  references: null
+  notes: >
+    v1 migration: Was text.sentence. Pattern expects capital letter start
+    and ending punctuation. Locale-specific.
+
+representation.text.word:
+  title: "Single Word"
+  description: >
+    Single word without spaces (alphanumeric or with common separators like hyphen).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "LOWER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[a-zA-Z0-9]([a-zA-Z0-9\\-_]*[a-zA-Z0-9])?$"
+    minLength: 1
+    maxLength: 100
+  tier: [VARCHAR, text]
+  release_priority: 4
+  aliases: null
+  samples:
+    - "hello"
+    - "world"
+    - "hello-world"
+    - "test_123"
+  references: null
+  notes: >
+    v1 migration: Was text.word. Single word without spaces.
+    Allows hyphens and underscores in middle. Transform lowercases.
+
+representation.text.color_hex:
+  title: "Color (Hexadecimal)"
+  description: >
+    Color as hexadecimal value (e.g., #FF0000, #f00, FF0000).
+    May include # prefix. Short form (3 chars) or long form (6 chars).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "UPPER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose:
+    red: "CAST(CONV(REGEXP_EXTRACT(UPPER({col}), '[A-F0-9]{6}|[A-F0-9]{3}'), 16, 10) AS INTEGER)"
+    green: "CAST(CONV(REGEXP_EXTRACT(UPPER({col}), '[A-F0-9]{6}|[A-F0-9]{3}'), 16, 10) AS INTEGER)"
+    blue: "CAST(CONV(REGEXP_EXTRACT(UPPER({col}), '[A-F0-9]{6}|[A-F0-9]{3}'), 16, 10) AS INTEGER)"
+  validation:
+    type: string
+    pattern: "^#?[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$"
+  tier: [VARCHAR, text]
+  release_priority: 4
+  aliases: [hex_color]
+  samples:
+    - "#FF0000"
+    - "#f00"
+    - "0000FF"
+    - "#00FF00"
+  references: null
+  notes: >
+    v1 migration: Was text.hex_color. Transform uppercases.
+    Accepts # prefix or without. 3-digit (short) or 6-digit (long) hex.
+
+representation.text.color_rgb:
+  title: "Color (RGB)"
+  description: >
+    Color as RGB tuple (0-255 for each channel).
+    Format: "rgb(255,0,0)", "255,0,0", "(255, 0, 0)", or similar.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose:
+    red: "CAST(REGEXP_EXTRACT({col}, '^(?:rgb)?\\(?([0-9]{1,3})') AS SMALLINT)"
+    green: "CAST(REGEXP_EXTRACT({col}, ',\\s*([0-9]{1,3})') AS SMALLINT)"
+    blue: "CAST(REGEXP_EXTRACT({col}, ',\\s*([0-9]{1,3})\\)?$') AS SMALLINT)"
+  validation:
+    type: string
+    pattern: "^(?:rgb)?\\(?([0-9]{1,3}),\\s*([0-9]{1,3}),\\s*([0-9]{1,3})\\)?$"
+  tier: [VARCHAR, text]
+  release_priority: 3
+  aliases: [rgb]
+  samples:
+    - "rgb(255, 0, 0)"
+    - "255, 0, 0"
+    - "(128, 128, 128)"
+    - "rgb(0,255,0)"
+  references: null
+  notes: >
+    v1 migration: Was text.rgb_color. Format flexible to handle
+    "rgb(...)", "(r,g,b)", or "r,g,b" variants.
+
+representation.text.emoji:
+  title: "Emoji"
+  description: >
+    Single emoji character or emoji sequence.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[\\p{So}\\p{Sk}]+$"
+  tier: [VARCHAR, text]
+  release_priority: 3
+  aliases: null
+  samples:
+    - "😀"
+    - "🎉"
+    - "❤️"
+    - "🚀"
+  references: null
+  notes: >
+    v1 migration: Was text.emoji. Single emoji or emoji sequence.
+    Pattern matches Unicode symbol categories. Emoji width variable.
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: file
+#
+# File metadata (extensions, MIME types, sizes).
+# ═════════════════════════════════════════════════════════════════════
+
+representation.file.extension:
+  title: "File Extension"
+  description: >
+    File name extension or suffix (txt, pdf, docx, jpg, etc.).
+    May include or exclude leading dot.
+  designation: broad_words
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "LOWER(REGEXP_REPLACE({col}, '^\\.*', ''))"
+  transform_ext: null
+  decompose:
+    category: "CASE WHEN {col} IN ('txt', 'doc', 'docx', 'pdf', 'rtf') THEN 'document' WHEN {col} IN ('jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg') THEN 'image' WHEN {col} IN ('mp4', 'avi', 'mov', 'mkv', 'webm') THEN 'video' WHEN {col} IN ('mp3', 'wav', 'flac', 'aac', 'm4a') THEN 'audio' WHEN {col} IN ('zip', 'rar', '7z', 'tar', 'gz') THEN 'archive' ELSE 'other' END"
+  validation:
+    type: string
+    pattern: "^\\.?[a-zA-Z0-9]{1,10}$"
+  tier: [VARCHAR, file]
+  release_priority: 2
+  aliases: [file_type]
+  samples:
+    - "txt"
+    - ".pdf"
+    - "docx"
+    - "jpg"
+    - "xlsx"
+  references: null
+  notes: >
+    v1 migration: Was file.extension. Transform lowercases and removes
+    leading dot for canonical form. Decompose infers file category (document,
+    image, video, audio, archive).
+
+representation.file.mime_type:
+  title: "MIME Type"
+  description: >
+    MIME type (media type) for files and HTTP content
+    (e.g., text/plain, application/json, image/png).
+  designation: broad_characters
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "LOWER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose:
+    type: "REGEXP_EXTRACT({col}, '^([^/]+)')"
+    subtype: "REGEXP_EXTRACT({col}, '/([^;]+)')"
+    charset: "REGEXP_EXTRACT({col}, 'charset=([^;]+)')"
+  validation:
+    type: string
+    pattern: "^[a-zA-Z]+/[a-zA-Z0-9.+\\-]+(;.*)?$"
+  tier: [VARCHAR, file]
+  release_priority: 1
+  aliases: [content_type, media_type]
+  samples:
+    - "text/plain"
+    - "application/json"
+    - "image/png"
+    - "text/html; charset=utf-8"
+    - "application/vnd.ms-excel"
+  references: null
+  notes: >
+    v1 migration: Was file.mime_type marked broad_characters.
+    Standard format: type/subtype[+suffix];param=value.
+    Decompose extracts type, subtype, charset.
+
+representation.file.file_size:
+  title: "File Size"
+  description: >
+    File size in bytes, kilobytes, megabytes, etc. (e.g., 1024, 1.5MB, 2 GB).
+    Transforms to BIGINT (bytes).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: BIGINT
+  format_string: null
+  transform: >
+    CASE
+      WHEN UPPER({col}) LIKE '%GB%' THEN CAST(REGEXP_EXTRACT({col}, '^([0-9.]+)') AS DOUBLE) * 1024 * 1024 * 1024
+      WHEN UPPER({col}) LIKE '%MB%' THEN CAST(REGEXP_EXTRACT({col}, '^([0-9.]+)') AS DOUBLE) * 1024 * 1024
+      WHEN UPPER({col}) LIKE '%KB%' THEN CAST(REGEXP_EXTRACT({col}, '^([0-9.]+)') AS DOUBLE) * 1024
+      WHEN UPPER({col}) LIKE '%B%' THEN CAST(REGEXP_EXTRACT({col}, '^([0-9.]+)') AS DOUBLE)
+      ELSE CAST({col} AS BIGINT)
+    END
+  transform_ext: null
+  decompose:
+    size: "CAST(REGEXP_EXTRACT({col}, '^([0-9.]+)') AS DOUBLE)"
+    unit: "UPPER(COALESCE(REGEXP_EXTRACT({col}, '([A-Z]+)$'), 'B'))"
+  validation:
+    type: string
+    pattern: "^[0-9]+(\\.[0-9]+)?\\s*(B|KB|MB|GB|TB)?$"
+  tier: [BIGINT, file]
+  release_priority: 3
+  aliases: null
+  samples:
+    - "1024"
+    - "1.5 MB"
+    - "2 GB"
+    - "512 KB"
+  references: null
+  notes: >
+    v1 migration: Was file.size. Transform converts to bytes.
+    Handles B, KB, MB, GB, TB. Decompose extracts size value and unit.
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: scientific
+#
+# Scientific data (sequences, units, prefixes).
+# ═════════════════════════════════════════════════════════════════════
+
+representation.scientific.dna_sequence:
+  title: "DNA Sequence"
+  description: >
+    Deoxyribonucleic acid sequence in IUPAC notation
+    (letters: A, T, G, C, and ambiguity codes).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "UPPER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose:
+    length: "LENGTH({col})"
+    gc_content: "CAST(REGEXP_COUNT({col}, '[GC]') AS DOUBLE) / LENGTH({col})"
+  validation:
+    type: string
+    pattern: "^[ATGCRYSWKMBDHVN]+$"
+  tier: [VARCHAR, scientific]
+  release_priority: 2
+  aliases: [dna]
+  samples:
+    - "ATGCAGC"
+    - "GCTAGCTAGCTAG"
+    - "ATGATGATG"
+  references: null
+  notes: >
+    v1 migration: Was science.dna_sequence. IUPAC notation:
+    A=Adenine, T=Thymine, G=Guanine, C=Cytosine
+    Plus ambiguity codes: R, Y, S, W, K, M, B, D, H, V, N.
+    Transform uppercases. Decompose calculates GC content.
+
+representation.scientific.rna_sequence:
+  title: "RNA Sequence"
+  description: >
+    Ribonucleic acid sequence in IUPAC notation
+    (letters: A, U, G, C, and ambiguity codes).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "UPPER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose:
+    length: "LENGTH({col})"
+    gc_content: "CAST(REGEXP_COUNT({col}, '[GC]') AS DOUBLE) / LENGTH({col})"
+  validation:
+    type: string
+    pattern: "^[AUGCRYSWKMBDHVN]+$"
+  tier: [VARCHAR, scientific]
+  release_priority: 2
+  aliases: [rna]
+  samples:
+    - "AUGCAGC"
+    - "GCUAGCUAGCUAG"
+    - "AUGAUGAUG"
+  references: null
+  notes: >
+    v1 migration: Was science.rna_sequence. Like DNA but uses U instead of T.
+    IUPAC notation: A=Adenine, U=Uracil, G=Guanine, C=Cytosine
+    Plus ambiguity codes. Transform uppercases. Decompose calculates GC content.
+
+representation.scientific.protein_sequence:
+  title: "Protein Sequence"
+  description: >
+    Amino acid sequence in single-letter IUPAC notation
+    (20 standard amino acids plus ambiguity codes).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "UPPER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose:
+    length: "LENGTH({col})"
+    molecular_weight_estimate: "LENGTH({col}) * 110"
+  validation:
+    type: string
+    pattern: "^[ACDEFGHIKLMNPQRSTVWXY*]+$"
+  tier: [VARCHAR, scientific]
+  release_priority: 2
+  aliases: [protein, peptide, amino_acid_sequence]
+  samples:
+    - "MKVLLIVGS"
+    - "ACDEFGHIKLMNPQRSTVWYFL"
+    - "MPKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVG"
+  references: null
+  notes: >
+    v1 migration: New for v2. Single-letter amino acid notation.
+    Standard: A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
+    Ambiguity: B (D or N), Z (E or Q), X (any), * (stop codon)
+
+representation.scientific.measurement_unit:
+  title: "Measurement Unit"
+  description: >
+    Unit of measurement (meter, kilogram, second, Joule, etc.).
+    May be written as symbol (m, kg, s) or full name (meter, kilogram).
+    Broad categorization.
+  designation: broad_words
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "LOWER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    enum:
+      - meter
+      - kilogram
+      - second
+      - ampere
+      - kelvin
+      - mole
+      - candela
+      - hertz
+      - newton
+      - joule
+      - watt
+      - pascal
+      - degree_celsius
+      - liter
+      - gram
+      - m
+      - kg
+      - s
+      - A
+      - K
+      - mol
+      - cd
+      - Hz
+      - N
+      - J
+      - W
+      - Pa
+      - "°C"
+      - L
+      - g
+  tier: [VARCHAR, scientific]
+  release_priority: 1
+  aliases: [unit]
+  samples:
+    - "meter"
+    - "kilogram"
+    - "second"
+    - "m"
+    - "kg"
+    - "Joule"
+    - "J"
+  references: null
+  notes: >
+    v1 migration: Was science.measure_unit marked broad_words.
+    SI base units and common derived units. Supports both symbols
+    and full names.
+
+representation.scientific.metric_prefix:
+  title: "Metric Prefix"
+  description: >
+    SI metric prefix (kilo, mega, giga, milli, micro, nano, etc.).
+    May include unit or stand alone.
+  designation: broad_words
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "LOWER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose:
+    prefix: "REGEXP_EXTRACT({col}, '^([a-z]+)')"
+    multiplier: "CASE WHEN {col} LIKE 'kilo%' THEN 1000 WHEN {col} LIKE 'mega%' THEN 1000000 WHEN {col} LIKE 'giga%' THEN 1000000000 WHEN {col} LIKE 'milli%' THEN 0.001 WHEN {col} LIKE 'micro%' THEN 0.000001 WHEN {col} LIKE 'nano%' THEN 0.000000001 ELSE NULL END"
+  validation:
+    type: string
+    enum:
+      - yotta
+      - zetta
+      - exa
+      - peta
+      - tera
+      - giga
+      - mega
+      - kilo
+      - hecto
+      - deca
+      - deci
+      - centi
+      - milli
+      - micro
+      - nano
+      - pico
+      - femto
+      - atto
+      - zepto
+      - yocto
+  tier: [VARCHAR, scientific]
+  release_priority: 1
+  aliases: [si_prefix]
+  samples:
+    - "kilo"
+    - "mega"
+    - "milli"
+    - "micro"
+    - "nano"
+  references: null
+  notes: >
+    v1 migration: Was science.metric_prefix marked broad_words.
+    SI metric prefixes: 10^24 (yotta) to 10^-24 (yocto).
+    Decompose extracts prefix and multiplier.

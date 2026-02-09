@@ -1,0 +1,559 @@
+# FineType v2 — Geography Domain Definitions
+#
+# Hierarchy: domain.category.type (locale is a field, not in the key)
+# Full label at inference time: domain.category.type.LOCALE
+#
+# Each definition is a transformation contract:
+#   - broad_type:     Target DuckDB type
+#   - format_string:  DuckDB strptime format (null if not strptime-based)
+#   - transform:      DuckDB SQL expression ({col} = column placeholder)
+#   - transform_ext:  Enhanced transform requiring a DuckDB extension
+#   - validation:     JSON Schema fragment for data quality checks
+#   - tier:           Path from root to parent in the inference graph
+#   - decompose:      Optional struct expansion for multi-field output
+#
+# Geography domain covers:
+#   - locations (cities, countries, regions)
+#   - addresses (street addresses, postal codes)
+#   - coordinates (latitude, longitude, geographic features)
+#   - airport/transportation codes (IATA, ICAO)
+# ─────────────────────────────────────────────────────────────────────
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: location
+#
+# Geographic location names and identifiers (countries, cities, regions).
+# Locale-specific due to country/city name representation variations.
+# ═════════════════════════════════════════════════════════════════════
+
+geography.location.country:
+  title: "Country Name"
+  description: >
+    Country name in English or local language. Locale-specific due to
+    name representation (e.g., "Germany" in English vs "Deutschland" in German).
+  designation: locale_specific
+  locales: [EN, EN_AU, EN_GB, EN_CA, EN_US, DE, FR, ES, IT, NL, PL, RU, JA, ZH, KO, AR]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    minLength: 2
+    maxLength: 100
+  tier: [VARCHAR, location]
+  release_priority: 4
+  aliases: [country_name]
+  samples:
+    - "United States"
+    - "France"
+    - "Japan"
+    - "Germany"
+    - "Canada"
+  references: null
+  notes: >
+    v1 migration: Was address.country. Locale-specific for country name
+    representation across languages. Consider ISO 3166-1 for standardization.
+
+geography.location.country_code:
+  title: "Country Code"
+  description: >
+    ISO 3166-1 alpha-2 country code (2 letters, e.g., US, FR, JP).
+    Universal format.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "UPPER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Z]{2}$"
+  tier: [VARCHAR, location]
+  release_priority: 5
+  aliases: [iso_3166_1_alpha_2]
+  samples:
+    - "US"
+    - "FR"
+    - "JP"
+    - "DE"
+    - "CA"
+  references: null
+  notes: >
+    v1 migration: Was address.country_code. Transform uppercases.
+    ISO 3166-1 alpha-2 standard (2 letters).
+
+geography.location.continent:
+  title: "Continent Name"
+  description: >
+    Name of geographic continent (Africa, Asia, Europe, North America,
+    South America, Oceania, Antarctica). Locale-specific.
+  designation: locale_specific
+  locales: [EN, EN_AU, EN_GB, EN_CA, EN_US, DE, FR, ES, IT, NL, PL, RU, JA, ZH, KO, AR]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    enum:
+      - Africa
+      - Asia
+      - Europe
+      - North America
+      - South America
+      - Oceania
+      - Antarctica
+  tier: [VARCHAR, location]
+  release_priority: 3
+  aliases: null
+  samples:
+    - "North America"
+    - "Europe"
+    - "Asia"
+    - "Africa"
+  references: null
+  notes: >
+    v1 migration: Was address.continent. Locale-specific for continent name
+    representation. 7-continent model shown in enum.
+
+geography.location.region:
+  title: "Region / State"
+  description: >
+    Subdivision of a country (state, province, region). Locale-specific
+    due to regional name conventions.
+  designation: locale_specific
+  locales: [EN, EN_AU, EN_GB, EN_CA, EN_US, DE, FR, ES, IT, NL, PL, RU, JA, ZH, KO, AR]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    minLength: 2
+    maxLength: 100
+  tier: [VARCHAR, location]
+  release_priority: 3
+  aliases: [state, province, subdivision]
+  samples:
+    - "California"
+    - "Texas"
+    - "Ontario"
+    - "Bavaria"
+    - "Île-de-France"
+  references: null
+  notes: >
+    v1 migration: Was address.subdivision and address.state. Alias covers
+    regional naming conventions. Locale-specific due to regional name
+    representation across languages.
+
+geography.location.city:
+  title: "City Name"
+  description: >
+    Name of a city, town, or municipality. Locale-specific due to city
+    name representation in different languages.
+  designation: locale_specific
+  locales: [EN, EN_AU, EN_GB, EN_CA, EN_US, DE, FR, ES, IT, NL, PL, RU, JA, ZH, KO, AR]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    minLength: 1
+    maxLength: 100
+  tier: [VARCHAR, location]
+  release_priority: 4
+  aliases: [municipality, town]
+  samples:
+    - "New York"
+    - "San Francisco"
+    - "London"
+    - "Tokyo"
+    - "Paris"
+  references: null
+  notes: >
+    v1 migration: Was address.city. Locale-specific for city name representation.
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: address
+#
+# Full and component-level street address information.
+# Locale-specific due to address format conventions (street first vs last).
+# ═════════════════════════════════════════════════════════════════════
+
+geography.address.full_address:
+  title: "Full Address"
+  description: >
+    Complete street address (number, street, city, postal code, country).
+    Format and order locale-specific. May include apartment/suite numbers.
+  designation: locale_specific
+  locales: [EN, EN_AU, EN_GB, EN_CA, EN_US, DE, FR, ES, IT, NL, PL, RU, JA, ZH, KO, AR]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose:
+    street_number: "REGEXP_EXTRACT({col}, '^([0-9]+)')"
+    street_name: "REGEXP_EXTRACT({col}, '^[0-9]+\\s+(.+?),?\\s+(?:[0-9]{5})?')"
+    city: "REGEXP_EXTRACT({col}, '([A-Z][a-z]+)(?:,|$)')"
+  validation:
+    type: string
+    minLength: 10
+    maxLength: 500
+  tier: [VARCHAR, address]
+  release_priority: 3
+  aliases: [address, street_address]
+  samples:
+    - "123 Main Street, New York, NY 10001, USA"
+    - "456 Oxford Street, London, W1C 1AX, UK"
+    - "789 Rue de Rivoli, Paris, 75004, France"
+  references: null
+  notes: >
+    v1 migration: Was address.address. Locale-specific for address format
+    (US format vs European format, etc.). Decompose extracts components but
+    requires more sophisticated parsing for reliability.
+
+geography.address.street_number:
+  title: "Street Number"
+  description: >
+    House or building number on a street (e.g., 123, 456B).
+    May include letters for sub-addresses or designations.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose:
+    numeric_part: "REGEXP_EXTRACT({col}, '^([0-9]+)')"
+    suffix: "REGEXP_EXTRACT({col}, '[0-9]+([A-Z]*)$')"
+  validation:
+    type: string
+    pattern: "^[0-9]+[A-Z]?(-[0-9]+[A-Z]?)?$"
+  tier: [VARCHAR, address]
+  release_priority: 3
+  aliases: [house_number]
+  samples:
+    - "123"
+    - "456B"
+    - "100-102"
+  references: null
+  notes: >
+    v1 migration: Was address.street_number. Includes ranges (100-102)
+    and letter suffixes (123A, 123B).
+
+geography.address.street_name:
+  title: "Street Name"
+  description: >
+    Name of the street (e.g., Main Street, Oxford Street).
+    May include street type (Street, Avenue, Boulevard, etc.).
+  designation: locale_specific
+  locales: [EN, EN_AU, EN_GB, EN_CA, EN_US, DE, FR, ES, IT, NL, PL, RU, JA, ZH, KO, AR]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    minLength: 2
+    maxLength: 100
+  tier: [VARCHAR, address]
+  release_priority: 3
+  aliases: [road]
+  samples:
+    - "Main Street"
+    - "Oxford Street"
+    - "Fifth Avenue"
+    - "Rue de Rivoli"
+  references: null
+  notes: >
+    v1 migration: Was address.street_name. Locale-specific.
+    May or may not include street type suffix (St, Ave, Blvd, etc.).
+
+geography.address.street_suffix:
+  title: "Street Suffix"
+  description: >
+    Street type abbreviation or suffix (St, Ave, Blvd, Rd, Ln, Way, Ct, Dr, etc.).
+    Locale-specific.
+  designation: locale_specific
+  locales: [EN, EN_AU, EN_GB, EN_CA, EN_US, DE, FR, ES, IT, NL, PL, RU]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    enum:
+      - Street
+      - St
+      - Avenue
+      - Ave
+      - Boulevard
+      - Blvd
+      - Road
+      - Rd
+      - Lane
+      - Ln
+      - Way
+      - Court
+      - Ct
+      - Drive
+      - Dr
+      - Circle
+      - Plaza
+      - Square
+  tier: [VARCHAR, address]
+  release_priority: 2
+  aliases: [street_type]
+  samples:
+    - "Street"
+    - "Avenue"
+    - "Boulevard"
+    - "Road"
+  references: null
+  notes: >
+    v1 migration: Was address.street_suffix. Locale-specific for suffix naming
+    and abbreviation conventions.
+
+geography.address.postal_code:
+  title: "Postal Code"
+  description: >
+    Postal code or ZIP code for mail delivery. Format varies by country:
+    US ZIP codes (5 digits or ZIP+4), UK postcodes (alphanumeric), etc.
+    Locale-specific format.
+  designation: locale_specific
+  locales: [EN, EN_AU, EN_GB, EN_CA, EN_US, DE, FR, ES, IT, NL, PL, RU, JA, ZH, KO]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose:
+    first_part: "REGEXP_EXTRACT({col}, '^([0-9A-Z]+)')"
+  validation:
+    type: string
+    minLength: 3
+    maxLength: 10
+  tier: [VARCHAR, address]
+  release_priority: 4
+  aliases: [zip_code, postcode]
+  samples:
+    - "10001"
+    - "75004"
+    - "W1C 1AX"
+    - "EC1A 1BB"
+  references: null
+  notes: >
+    v1 migration: Was address.postal_code (and address.zip_code).
+    Highly locale-specific: US (5-9 digits), UK (6-7 alphanumeric), DE (5 digits),
+    FR (5 digits), etc.
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: coordinate
+#
+# Geographic coordinates (latitude, longitude) and precise location data.
+# ═════════════════════════════════════════════════════════════════════
+
+geography.coordinate.latitude:
+  title: "Latitude"
+  description: >
+    Latitude coordinate in decimal degrees (-90 to +90).
+    North is positive, South is negative.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DOUBLE
+  format_string: null
+  transform: "CAST({col} AS DOUBLE)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: number
+    minimum: -90
+    maximum: 90
+  tier: [DOUBLE, coordinate]
+  release_priority: 4
+  aliases: [lat]
+  samples:
+    - "40.7128"
+    - "-33.8688"
+    - "51.5074"
+    - "35.6762"
+  references: null
+  notes: >
+    v1 migration: Was address.latitude. Decimal degrees format.
+    Range: -90 (South Pole) to +90 (North Pole).
+
+geography.coordinate.longitude:
+  title: "Longitude"
+  description: >
+    Longitude coordinate in decimal degrees (-180 to +180).
+    East is positive, West is negative.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DOUBLE
+  format_string: null
+  transform: "CAST({col} AS DOUBLE)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: number
+    minimum: -180
+    maximum: 180
+  tier: [DOUBLE, coordinate]
+  release_priority: 4
+  aliases: [lon, long]
+  samples:
+    - "-74.0060"
+    - "151.2093"
+    - "-0.1278"
+    - "139.6917"
+  references: null
+  notes: >
+    v1 migration: Was address.longitude. Decimal degrees format.
+    Range: -180 (West) to +180 (East).
+
+geography.coordinate.coordinates:
+  title: "Coordinate Pair (Lat, Lon)"
+  description: >
+    Latitude and longitude as a pair, formatted as "lat,lon" or "lat lon".
+    May include degree/minute/second notation or decimal degrees.
+    Transforms to POINT geometry (requires spatial extension).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: POINT
+  format_string: null
+  transform: "ST_Point({col}::DOUBLE, CAST(REGEXP_EXTRACT({col}, ',([^,]+)') AS DOUBLE))"
+  transform_ext: "ST_GeogPoint(CAST(REGEXP_EXTRACT({col}, '^([^,]+)') AS DOUBLE), CAST(REGEXP_EXTRACT({col}, ',([^,]+)') AS DOUBLE))"
+  decompose:
+    latitude: "CAST(REGEXP_EXTRACT({col}, '^([^,]+)') AS DOUBLE)"
+    longitude: "CAST(REGEXP_EXTRACT({col}, ',([^,]+)') AS DOUBLE)"
+  validation:
+    type: string
+    pattern: "^-?[0-9]+(\\.[0-9]+)?[, ]-?[0-9]+(\\.[0-9]+)?$"
+  tier: [POINT, coordinate]
+  release_priority: 3
+  aliases: [lat_lon, location]
+  samples:
+    - "40.7128,-74.0060"
+    - "51.5074,-0.1278"
+    - "35.6762 139.6917"
+  references: null
+  notes: >
+    v1 migration: Was address.coordinates. Spatial extension required for
+    POINT type (DuckDB spatial). Decompose extracts lat and lon separately.
+    Format: "lat,lon" or "lat lon".
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: transportation
+#
+# Codes for airports and transportation facilities.
+# ═════════════════════════════════════════════════════════════════════
+
+geography.transportation.iata_code:
+  title: "IATA Airport Code"
+  description: >
+    International Air Transport Association airport code (3 letters).
+    Identifies airports for flight bookings and schedules (e.g., JFK, LAX, CDG).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "UPPER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Z]{3}$"
+  tier: [VARCHAR, transportation]
+  release_priority: 4
+  aliases: null
+  samples:
+    - "JFK"
+    - "LAX"
+    - "CDG"
+    - "LHR"
+    - "NRT"
+  references: null
+  notes: >
+    v1 migration: Was address.iata_code. Transform uppercases.
+    3-letter code. Examples: JFK (New York), LAX (Los Angeles), CDG (Paris),
+    LHR (London), NRT (Tokyo).
+
+geography.transportation.icao_code:
+  title: "ICAO Airport Code"
+  description: >
+    International Civil Aviation Organization airport code (4 letters).
+    More comprehensive than IATA; includes some smaller airports
+    (e.g., KJFK, KLAX, LFPG).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "UPPER(CAST({col} AS VARCHAR))"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Z]{4}$"
+  tier: [VARCHAR, transportation]
+  release_priority: 3
+  aliases: null
+  samples:
+    - "KJFK"
+    - "KLAX"
+    - "LFPG"
+    - "EGLL"
+    - "RJTT"
+  references: null
+  notes: >
+    v1 migration: Was address.icao_code. Transform uppercases.
+    4-letter code. Examples: KJFK (New York), KLAX (Los Angeles),
+    LFPG (Paris), EGLL (London), RJTT (Tokyo).
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: contact
+#
+# Contact and communication-related geographic information.
+# ═════════════════════════════════════════════════════════════════════
+
+geography.contact.calling_code:
+  title: "International Calling Code"
+  description: >
+    International dialing code for a country (e.g., +1 for USA/Canada,
+    +44 for UK, +33 for France). May include +, may not.
+  designation: locale_specific
+  locales: [EN, EN_AU, EN_GB, EN_CA, EN_US, DE, FR, ES, IT, NL, PL, RU, JA, ZH, KO, AR]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose:
+    code: "REGEXP_EXTRACT({col}, '\\+?([0-9]+)')"
+  validation:
+    type: string
+    pattern: "^\\+?[0-9]{1,4}$"
+  tier: [VARCHAR, contact]
+  release_priority: 3
+  aliases: [isd_code, country_code]
+  samples:
+    - "+1"
+    - "+44"
+    - "+33"
+    - "+81"
+    - "1"
+  references: null
+  notes: >
+    v1 migration: Was address.calling_code (also aliased to address.isd_code).
+    May include +, may not. Locale-specific for country association.
+    Range: 1-4 digits.
+
+# ═════════════════════════════════════════════════════════════════════
+# Note: Country metadata (emoji flags, etc.) moved to representation domain
+# ═════════════════════════════════════════════════════════════════════

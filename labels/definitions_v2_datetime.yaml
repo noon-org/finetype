@@ -1,0 +1,1410 @@
+# FineType v2 — Datetime Domain Definitions
+#
+# Hierarchy: domain.category.type (locale is a field, not in the key)
+# Full label at inference time: domain.category.type.LOCALE
+#
+# Each definition is a transformation contract:
+#   - broad_type:     Target DuckDB type
+#   - format_string:  DuckDB strptime format (null if not strptime-based)
+#   - transform:      DuckDB SQL expression ({col} = column placeholder)
+#   - transform_ext:  Enhanced transform requiring a DuckDB extension
+#   - validation:     JSON Schema fragment for data quality checks
+#   - tier:           Path from root to parent in the inference graph
+#   - decompose:      Optional struct expansion for multi-field output
+#
+# v1 migration notes are in `aliases` and `notes` fields.
+# ─────────────────────────────────────────────────────────────────────
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: timestamp
+#
+# Combined date + time formats. All resolve to DuckDB TIMESTAMP or
+# TIMESTAMPTZ. These are the most common datetime formats encountered
+# in analytics pipelines.
+# ═════════════════════════════════════════════════════════════════════
+
+datetime.timestamp.iso_8601:
+  title: ISO 8601
+  description: >
+    Standard international datetime format with UTC indicator.
+    The most widely used machine-readable datetime format.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: "%Y-%m-%dT%H:%M:%SZ"
+  transform: "strptime({col}, '%Y-%m-%dT%H:%M:%SZ')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    minLength: 20
+    maxLength: 20
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  aliases: [big_endian]
+  samples:
+    - "2024-01-15T10:30:00Z"
+    - "2019-12-31T23:59:59Z"
+    - "2023-06-01T00:00:00Z"
+  references:
+    - title: "ISO 8601-1:2019"
+      link: "https://www.iso.org/standard/70907.html"
+    - title: "W3C Date and Time Formats"
+      link: "https://www.w3.org/TR/NOTE-datetime"
+  notes: null
+
+datetime.timestamp.iso_8601_compact:
+  title: ISO 8601 Compact
+  description: >
+    Compact ISO 8601 without separators. Common in filenames,
+    log identifiers, and systems with character constraints.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: "%Y%m%dT%H%M%S"
+  transform: "strptime({col}, '%Y%m%dT%H%M%S')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{8}T\\d{6}$"
+    minLength: 15
+    maxLength: 15
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "20240115T103000"
+    - "20191231T235959"
+  references:
+    - title: "ISO 8601-1:2019"
+      link: "https://www.iso.org/standard/70907.html"
+  notes: null
+
+datetime.timestamp.iso_8601_microseconds:
+  title: ISO 8601 with Microseconds
+  description: >
+    Extended ISO 8601 with microsecond precision and UTC indicator.
+    Common in high-precision logging and scientific data.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: "%Y-%m-%dT%H:%M:%S.%fZ"
+  transform: "strptime({col}, '%Y-%m-%dT%H:%M:%S.%fZ')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$"
+    minLength: 27
+    maxLength: 27
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  aliases: [iso_8601_ext]
+  samples:
+    - "2024-01-15T10:30:00.123456Z"
+    - "2019-12-31T23:59:59.000000Z"
+  references:
+    - title: "ISO 8601-1:2019"
+      link: "https://www.iso.org/standard/70907.html"
+  notes: "v1 name: datetime.iso_8601_ext"
+
+datetime.timestamp.iso_8601_offset:
+  title: ISO 8601 with Timezone Offset
+  description: >
+    ISO 8601 datetime with explicit timezone offset instead of Z.
+    Preserves the original timezone information.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMPTZ
+  format_string: "%Y-%m-%dT%H:%M:%S%z"
+  transform: "strptime({col}, '%Y-%m-%dT%H:%M:%S%z')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{1,2}:\\d{2}$"
+    minLength: 24
+    maxLength: 25
+  tier: [TIMESTAMPTZ, timestamp]
+  release_priority: 5
+  aliases: [iso_8601_with_time_zone_name]
+  samples:
+    - "2024-01-15T10:30:00+05:00"
+    - "2023-12-29T10:45:30-05:00"
+    - "2024-06-15T12:00:00+00:00"
+  references:
+    - title: "ISO 8601-1:2019"
+      link: "https://www.iso.org/standard/70907.html"
+  notes: "v1 name: datetime.iso_8601_with_time_zone_name"
+
+datetime.timestamp.rfc_2822:
+  title: RFC 2822
+  description: >
+    Email header datetime format. Used in SMTP, HTTP headers,
+    and RSS feeds. Includes abbreviated weekday and month names.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMPTZ
+  format_string: "%a, %d %b %Y %H:%M:%S %z"
+  transform: "strptime({col}, '%a, %d %b %Y %H:%M:%S %z')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Z][a-z]{2}, \\d{2} [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2} .+$"
+  tier: [TIMESTAMPTZ, timestamp]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "Tue, 15 Jan 2024 10:30:00 GMT+00:00"
+    - "Sun, 31 Dec 2023 23:59:59 GMT+00:00"
+  references:
+    - title: "RFC 2822 - Internet Message Format"
+      link: "https://www.rfc-editor.org/rfc/rfc2822"
+  notes: null
+
+datetime.timestamp.rfc_3339:
+  title: RFC 3339
+  description: >
+    Internet datetime format, a profile of ISO 8601. Used in Atom feeds,
+    JSON APIs, and modern web services.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMPTZ
+  format_string: "%Y-%m-%dT%H:%M:%S%z"
+  transform: "strptime({col}, '%Y-%m-%dT%H:%M:%S %z')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2} .+$"
+  tier: [TIMESTAMPTZ, timestamp]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "2024-01-15T10:30:00 GMT+00:00"
+    - "2019-12-31T23:59:59 GMT+00:00"
+  references:
+    - title: "RFC 3339 - Date and Time on the Internet"
+      link: "https://www.rfc-editor.org/rfc/rfc3339"
+  notes: >
+    Current generator produces space-separated offset (non-standard).
+    Should be updated to produce proper RFC 3339: 2024-01-15T10:30:00+00:00
+
+datetime.timestamp.sql_standard:
+  title: SQL Standard
+  description: >
+    Common SQL datetime format used in PostgreSQL, MySQL, and DuckDB.
+    Space-separated date and time without timezone.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: "%Y-%m-%d %H:%M:%S"
+  transform: "strptime({col}, '%Y-%m-%d %H:%M:%S')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$"
+    minLength: 19
+    maxLength: 19
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "2024-01-15 10:30:00"
+    - "2019-12-31 23:59:59"
+  references:
+    - title: "SQL Standard (ISO/IEC 9075)"
+      link: "https://www.iso.org/standard/76583.html"
+  notes: null
+
+datetime.timestamp.american:
+  title: American Datetime
+  description: >
+    US-style datetime with 12-hour clock and AM/PM indicator.
+    Month-first ordering (MM/DD/YYYY).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: "%m/%d/%Y %I:%M %p"
+  transform: "strptime({col}, '%m/%d/%Y %I:%M %p')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2} [AP]M$"
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  aliases: [middle_endian]
+  samples:
+    - "01/15/2024 10:30 AM"
+    - "12/31/2019 11:59 PM"
+  references:
+    - title: "Date format by country - United States"
+      link: "https://en.wikipedia.org/wiki/Date_format_by_country#United_States"
+  notes: null
+
+datetime.timestamp.american_24h:
+  title: American Datetime (24-hour)
+  description: >
+    US-style date ordering (MM/DD/YYYY) with 24-hour time.
+    Common in US military, healthcare, and technical systems.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: "%m/%d/%Y %H:%M:%S"
+  transform: "strptime({col}, '%m/%d/%Y %H:%M:%S')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2}$"
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  aliases: [formatted_datetime]
+  samples:
+    - "01/15/2024 10:30:00"
+    - "12/31/2019 23:59:59"
+  references: null
+  notes: "v1 name: datetime.formatted_datetime"
+
+datetime.timestamp.european:
+  title: European Datetime
+  description: >
+    European-style datetime with 24-hour clock. Day-first ordering
+    (DD/MM/YYYY). Used across the EU and many Commonwealth countries.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: "%d/%m/%Y %H:%M"
+  transform: "strptime({col}, '%d/%m/%Y %H:%M')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}$"
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  aliases: [little_endian]
+  samples:
+    - "15/01/2024 10:30"
+    - "31/12/2019 23:59"
+  references:
+    - title: "Date format by country - Europe"
+      link: "https://en.wikipedia.org/wiki/Date_format_by_country#Europe"
+  notes: null
+
+datetime.timestamp.iso_microseconds:
+  title: ISO Datetime with Microseconds (no timezone)
+  description: >
+    ISO 8601-like format with microsecond precision but no timezone
+    indicator. Common in database exports and log files.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: "%Y-%m-%dT%H:%M:%S.%f"
+  transform: "strptime({col}, '%Y-%m-%dT%H:%M:%S.%f')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}$"
+    minLength: 26
+    maxLength: 26
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 3
+  aliases: []
+  samples:
+    - "2024-01-15T10:30:00.123456"
+    - "2019-12-31T23:59:59.000000"
+  references: null
+  notes: "v1 name: datetime.datetime. Distinct from iso_8601_microseconds (has no trailing Z)."
+
+datetime.timestamp.rfc_2822_ordinal:
+  title: RFC 2822 with Ordinal Indicators
+  description: >
+    RFC 2822 variant with ordinal day suffixes (1st, 2nd, 3rd, 4th).
+    Non-standard but encountered in human-readable email headers
+    and legacy systems.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMPTZ
+  format_string: null
+  transform: null
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Z][a-z]{2}, \\d{2}`(st|nd|rd|th)` [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2} [+-]\\d{4}$"
+  tier: [TIMESTAMPTZ, timestamp]
+  release_priority: 3
+  aliases: [rfc_2822_with_ordinals]
+  samples:
+    - "Tue, 15`th` Jan 2024 10:30:00 +0000"
+    - "Wed, 01`st` Jan 2020 00:00:00 +0000"
+  references:
+    - title: "RFC 2822 - Internet Message Format"
+      link: "https://www.rfc-editor.org/rfc/rfc2822"
+  notes: >
+    No direct strptime support — ordinal suffix requires preprocessing
+    (strip backtick-wrapped suffixes) before parsing as standard RFC 2822.
+    transform is null because custom logic is needed.
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: date
+#
+# Date-only formats (no time component). All resolve to DuckDB DATE.
+# Separator style and component ordering are the key discriminators.
+# ═════════════════════════════════════════════════════════════════════
+
+datetime.date.iso:
+  title: ISO Date
+  description: >
+    ISO 8601 date format. The universal default for date representation
+    in databases, APIs, and data interchange.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%Y-%m-%d"
+  transform: "strptime({col}, '%Y-%m-%d')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+    minLength: 10
+    maxLength: 10
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "2024-01-15"
+    - "2019-12-31"
+    - "2000-01-01"
+  references:
+    - title: "ISO 8601-1:2019"
+      link: "https://www.iso.org/standard/70907.html"
+  notes: "v1 name: datetime.date"
+
+datetime.date.us_slash:
+  title: US Date (slash-separated)
+  description: >
+    Month/Day/Year with slash separators. Standard US date format.
+    Ambiguous with EU format for days 1-12 — column-mode inference
+    uses value distribution to disambiguate.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%m/%d/%Y"
+  transform: "strptime({col}, '%m/%d/%Y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}/\\d{2}/\\d{4}$"
+    minLength: 10
+    maxLength: 10
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: [formatted_date]
+  samples:
+    - "01/15/2024"
+    - "12/31/2019"
+  references: null
+  notes: "v1 name: datetime.formatted_date. Ambiguous with eu_slash when day <= 12."
+
+datetime.date.eu_slash:
+  title: European Date (slash-separated)
+  description: >
+    Day/Month/Year with slash separators. Standard format across
+    Europe, Australia, and much of Asia. Ambiguous with US format
+    for days 1-12.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%d/%m/%Y"
+  transform: "strptime({col}, '%d/%m/%Y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}/\\d{2}/\\d{4}$"
+    minLength: 10
+    maxLength: 10
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "15/01/2024"
+    - "31/12/2019"
+  references: null
+  notes: >
+    NEW in v2. Critical for non-US data. Ambiguous with us_slash when
+    day <= 12 — column-mode inference resolves by checking if any value
+    has first component > 12.
+
+datetime.date.eu_dot:
+  title: European Date (dot-separated)
+  description: >
+    Day.Month.Year with dot separators. Common in Germany, Austria,
+    Switzerland, and Eastern European countries.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%d.%m.%Y"
+  transform: "strptime({col}, '%d.%m.%Y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}\\.\\d{2}\\.\\d{4}$"
+    minLength: 10
+    maxLength: 10
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "15.01.2024"
+    - "31.12.2019"
+  references: null
+  notes: "NEW in v2. Common in German-speaking and Eastern European data."
+
+datetime.date.short_dmy:
+  title: Short Date (Day-Month-Year, 2-digit year)
+  description: >
+    Two-digit year, day-first. Dash-separated. Common in legacy
+    systems and short-form data entry.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%d-%m-%y"
+  transform: "strptime({col}, '%d-%m-%y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}-\\d{2}-\\d{2}$"
+    minLength: 8
+    maxLength: 8
+  tier: [DATE, date]
+  release_priority: 3
+  aliases: []
+  samples:
+    - "15-01-24"
+    - "31-12-99"
+  references: null
+  notes: null
+
+datetime.date.short_mdy:
+  title: Short Date (Month-Day-Year, 2-digit year)
+  description: >
+    Two-digit year, month-first (US ordering). Dash-separated.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%m-%d-%y"
+  transform: "strptime({col}, '%m-%d-%y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}-\\d{2}-\\d{2}$"
+    minLength: 8
+    maxLength: 8
+  tier: [DATE, date]
+  release_priority: 3
+  aliases: []
+  samples:
+    - "01-15-24"
+    - "12-31-99"
+  references: null
+  notes: "Same regex as short_dmy — requires column-mode inference to disambiguate."
+
+datetime.date.short_ymd:
+  title: Short Date (Year-Month-Day, 2-digit year)
+  description: >
+    Two-digit year, year-first (ISO-like ordering). Dash-separated.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%y-%m-%d"
+  transform: "strptime({col}, '%y-%m-%d')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}-\\d{2}-\\d{2}$"
+    minLength: 8
+    maxLength: 8
+  tier: [DATE, date]
+  release_priority: 3
+  aliases: []
+  samples:
+    - "24-01-15"
+    - "99-12-31"
+  references: null
+  notes: null
+
+datetime.date.compact_ymd:
+  title: Compact Date (YYYYMMDD)
+  description: >
+    Eight-digit date with no separators, year-first. Common in
+    file naming, partition keys, and data warehousing (e.g. 20240115).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%Y%m%d"
+  transform: "strptime({col}, '%Y%m%d')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{8}$"
+    minLength: 8
+    maxLength: 8
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: [numeric_ymd]
+  samples:
+    - "20240115"
+    - "20191231"
+  references: null
+  notes: "v1 name: date.numeric_ymd"
+
+datetime.date.compact_dmy:
+  title: Compact Date (DDMMYYYY)
+  description: >
+    Eight-digit date with no separators, day-first.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%d%m%Y"
+  transform: "strptime({col}, '%d%m%Y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{8}$"
+    minLength: 8
+    maxLength: 8
+  tier: [DATE, date]
+  release_priority: 3
+  aliases: [numeric_dmy]
+  samples:
+    - "15012024"
+    - "31122019"
+  references: null
+  notes: "v1 name: date.numeric_dmy. Same regex as compact_ymd — requires column-mode inference."
+
+datetime.date.compact_mdy:
+  title: Compact Date (MMDDYYYY)
+  description: >
+    Eight-digit date with no separators, month-first (US ordering).
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%m%d%Y"
+  transform: "strptime({col}, '%m%d%Y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{8}$"
+    minLength: 8
+    maxLength: 8
+  tier: [DATE, date]
+  release_priority: 3
+  aliases: [numeric_mdy]
+  samples:
+    - "01152024"
+    - "12312019"
+  references: null
+  notes: "v1 name: date.numeric_mdy. Same regex as compact_ymd — requires column-mode inference."
+
+datetime.date.abbreviated_month:
+  title: Abbreviated Month Date
+  description: >
+    Date with three-letter abbreviated month name. Locale-specific
+    because month abbreviations vary by language (Jan vs janv vs Gen).
+  designation: locale_specific
+  locales:
+    - EN
+    - FR
+    - DE
+    - ES
+    - IT
+    - PT
+    - NL
+    - SV
+    - DA
+    - "NO"
+    - PL
+    - CS
+    - RU
+    - JA
+    - ZH
+  broad_type: DATE
+  format_string: "%b %d, %Y"
+  transform: "strptime({col}, '%b %d, %Y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Za-z]{3} \\d{2}, \\d{4}$"
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "Jan 15, 2024"
+    - "Dec 31, 2019"
+    - "Jun 01, 2000"
+  references: null
+  notes: "Per-locale samples needed for non-EN locales."
+
+datetime.date.long_full_month:
+  title: Long Date with Full Month Name
+  description: >
+    Date with full month name. Locale-specific because month names
+    vary by language (January vs janvier vs Januar).
+  designation: locale_specific
+  locales:
+    - EN
+    - FR
+    - DE
+    - ES
+    - IT
+    - PT
+    - NL
+    - SV
+    - DA
+    - "NO"
+    - PL
+    - CS
+    - RU
+  broad_type: DATE
+  format_string: "%B %d, %Y"
+  transform: "strptime({col}, '%B %d, %Y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Za-z]+ \\d{2}, \\d{4}$"
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: [long_full_month_name]
+  samples:
+    - "January 15, 2024"
+    - "December 31, 2019"
+  references: null
+  notes: "v1 name: date.long_full_month_name"
+
+datetime.date.weekday_abbreviated_month:
+  title: Full Weekday with Abbreviated Month
+  description: >
+    Full weekday name followed by abbreviated month. Locale-specific
+    for both weekday names and month abbreviations.
+  designation: locale_specific
+  locales:
+    - EN
+    - FR
+    - DE
+    - ES
+    - IT
+    - PT
+  broad_type: DATE
+  format_string: "%A, %d %b %Y"
+  transform: "strptime({col}, '%A, %d %b %Y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Za-z]+, \\d{2} [A-Za-z]{3} \\d{4}$"
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: [full_weekday_abbreviated_month]
+  samples:
+    - "Monday, 15 Jan 2024"
+    - "Tuesday, 31 Dec 2019"
+  references: null
+  notes: "v1 name: date.full_weekday_abbreviated_month"
+
+datetime.date.weekday_full_month:
+  title: Full Weekday with Full Month Name
+  description: >
+    Full weekday name followed by full month name. The most
+    human-readable date format. Locale-specific.
+  designation: locale_specific
+  locales:
+    - EN
+    - FR
+    - DE
+    - ES
+    - IT
+    - PT
+  broad_type: DATE
+  format_string: "%A, %d %B %Y"
+  transform: "strptime({col}, '%A, %d %B %Y')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Za-z]+, \\d{2} [A-Za-z]+ \\d{4}$"
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: [long_weekday_month_name]
+  samples:
+    - "Monday, 15 January 2024"
+    - "Tuesday, 31 December 2019"
+  references: null
+  notes: "v1 name: date.long_weekday_month_name"
+
+datetime.date.ordinal:
+  title: Ordinal Date
+  description: >
+    ISO 8601 ordinal date: year and day-of-year (1-366).
+    Used in astronomy, military, and some industrial systems.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%Y-%j"
+  transform: "strptime({col}, '%Y-%j')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-\\d{3}$"
+    minLength: 8
+    maxLength: 8
+  tier: [DATE, date]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "2024-015"
+    - "2019-365"
+    - "2020-366"
+  references:
+    - title: "ISO 8601-1:2019"
+      link: "https://www.iso.org/standard/70907.html"
+  notes: null
+
+datetime.date.julian:
+  title: Julian Date
+  description: >
+    Short-form Julian date with 2-digit year and 3-digit day-of-year.
+    Common in manufacturing, logistics, and food expiration dates.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: null
+  transform: null
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}-\\d{3}$"
+    minLength: 6
+    maxLength: 6
+  tier: [DATE, date]
+  release_priority: 3
+  aliases: []
+  samples:
+    - "24-015"
+    - "23-365"
+  references:
+    - title: "Julian Day Number"
+      link: "https://en.wikipedia.org/wiki/Julian_day"
+  notes: >
+    No direct strptime support for 2-digit year + day-of-year.
+    Requires custom parsing: concat '20' + first 2 chars, then
+    strptime(result, '%Y-%j').
+
+datetime.date.iso_week:
+  title: ISO Week Date
+  description: >
+    ISO 8601 week date format (YYYY-Www). Used in business planning,
+    fiscal calendars, and European retail analytics.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: "%G-W%V"
+  transform: "strptime({col} || '-1', '%G-W%V-%u')::DATE"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-W\\d{1,2}$"
+  tier: [DATE, date]
+  release_priority: 3
+  aliases: [week_date]
+  samples:
+    - "2024-W03"
+    - "2019-W52"
+  references:
+    - title: "ISO 8601 Week Date"
+      link: "https://en.wikipedia.org/wiki/ISO_week_date"
+  notes: >
+    v1 name: datetime.week_date. Transform appends '-1' (Monday) to
+    produce a full week-date that strptime can parse.
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: time
+#
+# Time-only formats (no date component). Resolve to DuckDB TIME.
+# ═════════════════════════════════════════════════════════════════════
+
+datetime.time.iso:
+  title: ISO Time with Microseconds
+  description: >
+    24-hour time with microsecond precision. Common in high-frequency
+    data, scientific instruments, and log files.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIME
+  format_string: "%H:%M:%S.%f"
+  transform: "strptime({col}, '%H:%M:%S.%f')::TIME"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}:\\d{2}:\\d{2}\\.\\d{6}$"
+    minLength: 15
+    maxLength: 15
+  tier: [TIME, time]
+  release_priority: 3
+  aliases: []
+  samples:
+    - "10:30:00.123456"
+    - "23:59:59.000000"
+  references: null
+  notes: "v1 name: datetime.time"
+
+datetime.time.hms_24h:
+  title: 24-Hour Time (HH:MM:SS)
+  description: >
+    Standard 24-hour time without fractional seconds. The most
+    common time representation in data systems.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIME
+  format_string: "%H:%M:%S"
+  transform: "strptime({col}, '%H:%M:%S')::TIME"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}:\\d{2}:\\d{2}$"
+    minLength: 8
+    maxLength: 8
+  tier: [TIME, time]
+  release_priority: 5
+  aliases: [formatted_time]
+  samples:
+    - "10:30:00"
+    - "23:59:59"
+    - "00:00:00"
+  references: null
+  notes: "v1 name: datetime.formatted_time"
+
+datetime.time.hm_24h:
+  title: 24-Hour Time (HH:MM)
+  description: >
+    Hours and minutes only, no seconds. Common in schedules,
+    timetables, and user-facing applications.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIME
+  format_string: "%H:%M"
+  transform: "strptime({col}, '%H:%M')::TIME"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}:\\d{2}$"
+    minLength: 5
+    maxLength: 5
+  tier: [TIME, time]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "10:30"
+    - "23:59"
+    - "00:00"
+  references: null
+  notes: "NEW in v2."
+
+datetime.time.hms_12h:
+  title: 12-Hour Time with AM/PM
+  description: >
+    12-hour time with AM/PM indicator. Standard in US and
+    some Commonwealth countries.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIME
+  format_string: "%I:%M:%S %p"
+  transform: "strptime({col}, '%I:%M:%S %p')::TIME"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}:\\d{2}:\\d{2} [AP]M$"
+    minLength: 11
+    maxLength: 11
+  tier: [TIME, time]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "10:30:00 AM"
+    - "11:59:59 PM"
+    - "12:00:00 AM"
+  references: null
+  notes: "NEW in v2."
+
+datetime.time.hm_12h:
+  title: 12-Hour Time (HH:MM AM/PM)
+  description: >
+    Hours and minutes with AM/PM, no seconds. Common in US
+    scheduling applications and user interfaces.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIME
+  format_string: "%I:%M %p"
+  transform: "strptime({col}, '%I:%M %p')::TIME"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{2}:\\d{2} [AP]M$"
+    minLength: 8
+    maxLength: 8
+  tier: [TIME, time]
+  release_priority: 5
+  aliases: []
+  samples:
+    - "10:30 AM"
+    - "11:59 PM"
+  references: null
+  notes: "NEW in v2."
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: epoch
+#
+# Numeric timestamp representations. Input is an integer string,
+# output is TIMESTAMP via arithmetic conversion (not strptime).
+# ═════════════════════════════════════════════════════════════════════
+
+datetime.epoch.unix_seconds:
+  title: Unix Timestamp (seconds)
+  description: >
+    Seconds since 1970-01-01 00:00:00 UTC. The standard epoch
+    representation used in most programming languages and systems.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: null
+  transform: "to_timestamp({col}::BIGINT)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{10}$"
+    minLength: 10
+    maxLength: 10
+  tier: [BIGINT, epoch]
+  release_priority: 5
+  aliases: [unix_timestamp, timestamp]
+  samples:
+    - "1705312200"
+    - "1577836799"
+    - "1000000000"
+  references:
+    - title: "The Open Group Base Specifications - Epoch"
+      link: "https://pubs.opengroup.org/onlinepubs/9699919799/"
+  notes: >
+    v1 names: datetime.unix_timestamp, datetime.timestamp.
+    Tier 0 is BIGINT (looks like a number) but broad_type output
+    is TIMESTAMP after transformation.
+
+datetime.epoch.unix_milliseconds:
+  title: Unix Timestamp (milliseconds)
+  description: >
+    Milliseconds since epoch. Common in JavaScript (Date.now()),
+    Java (System.currentTimeMillis()), and many APIs.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: null
+  transform: "to_timestamp({col}::BIGINT / 1000)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{13}$"
+    minLength: 13
+    maxLength: 13
+  tier: [BIGINT, epoch]
+  release_priority: 5
+  aliases: [unix_epoch_in_milliseconds]
+  samples:
+    - "1705312200000"
+    - "1577836799999"
+  references:
+    - title: "The Open Group Base Specifications - Epoch"
+      link: "https://pubs.opengroup.org/onlinepubs/9699919799/"
+  notes: "v1 name: datetime.unix_epoch_in_milliseconds"
+
+datetime.epoch.unix_microseconds:
+  title: Unix Timestamp (microseconds)
+  description: >
+    Microseconds since epoch. Used in high-frequency trading,
+    distributed tracing (Jaeger, Zipkin), and InfluxDB.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: null
+  transform: "to_timestamp({col}::BIGINT / 1000000)"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{16}$"
+    minLength: 16
+    maxLength: 16
+  tier: [BIGINT, epoch]
+  release_priority: 3
+  aliases: []
+  samples:
+    - "1705312200000000"
+    - "1577836799999999"
+  references: null
+  notes: "NEW in v2."
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: offset
+#
+# Timezone and UTC offset representations. These identify a timezone
+# but don't represent a point in time on their own.
+# ═════════════════════════════════════════════════════════════════════
+
+datetime.offset.iana:
+  title: IANA Timezone Name
+  description: >
+    Timezone identifier from the IANA Time Zone Database (tz database).
+    Used in most programming languages and operating systems.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "{col}"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^[A-Z][a-z]+/[A-Z][a-z_]+(/[A-Z][a-z_]+)?$"
+    enum:
+      - "America/New_York"
+      - "Europe/London"
+      - "Asia/Tokyo"
+      - "Australia/Sydney"
+      - "Pacific/Auckland"
+      - "America/Los_Angeles"
+      - "Europe/Paris"
+      - "Asia/Shanghai"
+      - "America/Chicago"
+      - "Europe/Berlin"
+      - "Asia/Singapore"
+      - "Africa/Cairo"
+  tier: [VARCHAR, offset]
+  release_priority: 5
+  aliases: [timezone]
+  samples:
+    - "America/New_York"
+    - "Europe/London"
+    - "Asia/Tokyo"
+  references:
+    - title: "IANA Time Zone Database"
+      link: "https://www.iana.org/time-zones"
+  notes: >
+    v1 name: datetime.timezone. Enum in validation is a subset —
+    full list has 500+ entries. Validation should use the pattern
+    for general matching and enum for common values.
+
+datetime.offset.utc:
+  title: UTC Offset
+  description: >
+    Explicit UTC offset string (e.g., "UTC +05:00"). Used in
+    configuration files and human-readable timezone displays.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "{col}"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^UTC [+-]\\d{2}:\\d{2}$"
+  tier: [VARCHAR, offset]
+  release_priority: 4
+  aliases: [gmt_offset]
+  samples:
+    - "UTC +05:00"
+    - "UTC -08:00"
+    - "UTC +00:00"
+  references: null
+  notes: "v1 name: datetime.gmt_offset"
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: duration
+#
+# Time intervals and durations. Resolve to DuckDB INTERVAL.
+# ═════════════════════════════════════════════════════════════════════
+
+datetime.duration.iso_8601:
+  title: ISO 8601 Duration
+  description: >
+    Duration in ISO 8601 format (PnYnMnDTnHnMnS). Used in
+    iCalendar, XML Schema, and many APIs.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: INTERVAL
+  format_string: null
+  transform: "{col}::INTERVAL"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^P(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$"
+  tier: [INTERVAL, duration]
+  release_priority: 3
+  aliases: [duration]
+  samples:
+    - "PT30M"
+    - "PT1H30M"
+    - "P1DT12H"
+    - "P1Y6M"
+  references:
+    - title: "ISO 8601-1:2019 Durations"
+      link: "https://www.iso.org/standard/70907.html"
+  notes: "v1 name: datetime.duration. Generator only produces PT{N}M — should be expanded."
+
+# ═════════════════════════════════════════════════════════════════════
+# CATEGORY: component
+#
+# Individual datetime components. These are fragments, not complete
+# date/time values. Useful for validation and context, but often
+# ambiguous in isolation (column-mode inference recommended).
+# ═════════════════════════════════════════════════════════════════════
+
+datetime.component.year:
+  title: Calendar Year
+  description: >
+    Four-digit year. Ambiguous as a standalone value — could be
+    any integer. Column-mode inference checks range and distribution.
+  designation: broad_numbers
+  locales: [UNIVERSAL]
+  broad_type: SMALLINT
+  format_string: null
+  transform: "{col}::SMALLINT"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}$"
+    minimum: 1900
+    maximum: 2100
+  tier: [INTEGER, component]
+  release_priority: 1
+  aliases: []
+  samples:
+    - "2024"
+    - "1999"
+    - "2000"
+  references: null
+  notes: "v1 name: datetime.year. Was designation: duplicate."
+
+datetime.component.day_of_month:
+  title: Day of Month
+  description: >
+    Integer day of month (1-31). Highly ambiguous — overlaps with
+    many integer types. Best identified via column-mode inference.
+  designation: broad_numbers
+  locales: [UNIVERSAL]
+  broad_type: TINYINT
+  format_string: null
+  transform: "{col}::TINYINT"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: integer
+    minimum: 1
+    maximum: 31
+  tier: [INTEGER, component]
+  release_priority: 1
+  aliases: []
+  samples:
+    - "1"
+    - "15"
+    - "31"
+  references: null
+  notes: null
+
+datetime.component.day_of_week:
+  title: Day of Week Name
+  description: >
+    Full weekday name. Locale-specific (Monday vs lundi vs Montag).
+  designation: locale_specific
+  locales:
+    - EN
+    - FR
+    - DE
+    - ES
+    - IT
+    - PT
+  broad_type: VARCHAR
+  format_string: null
+  transform: "{col}"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    enum:
+      - "Monday"
+      - "Tuesday"
+      - "Wednesday"
+      - "Thursday"
+      - "Friday"
+      - "Saturday"
+      - "Sunday"
+  tier: [VARCHAR, component]
+  release_priority: 1
+  aliases: []
+  samples:
+    - "Monday"
+    - "Friday"
+    - "Sunday"
+  references: null
+  notes: "v1 name: datetime.day_of_week. Enum shown is EN only — each locale has its own enum."
+
+datetime.component.month_name:
+  title: Full Month Name
+  description: >
+    Full month name. Locale-specific (January vs janvier vs Januar).
+  designation: locale_specific
+  locales:
+    - EN
+    - FR
+    - DE
+    - ES
+    - IT
+    - PT
+  broad_type: VARCHAR
+  format_string: null
+  transform: "{col}"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    enum:
+      - "January"
+      - "February"
+      - "March"
+      - "April"
+      - "May"
+      - "June"
+      - "July"
+      - "August"
+      - "September"
+      - "October"
+      - "November"
+      - "December"
+  tier: [VARCHAR, component]
+  release_priority: 1
+  aliases: [month]
+  samples:
+    - "January"
+    - "June"
+    - "December"
+  references: null
+  notes: "v1 name: date.month. Enum shown is EN only — each locale has its own enum."
+
+datetime.component.century:
+  title: Century (Roman Numeral)
+  description: >
+    Century as a Roman numeral. Niche format found in historical data,
+    library cataloging, and academic texts.
+  designation: broad_characters
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "{col}"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    enum:
+      - "I"
+      - "II"
+      - "III"
+      - "IV"
+      - "V"
+      - "VI"
+      - "VII"
+      - "VIII"
+      - "IX"
+      - "X"
+      - "XI"
+      - "XII"
+      - "XIII"
+      - "XIV"
+      - "XV"
+      - "XVI"
+      - "XVII"
+      - "XVIII"
+      - "XIX"
+      - "XX"
+      - "XXI"
+  tier: [VARCHAR, component]
+  release_priority: 1
+  aliases: []
+  samples:
+    - "XIX"
+    - "XX"
+    - "XXI"
+  references: null
+  notes: null
+
+datetime.component.periodicity:
+  title: Periodicity
+  description: >
+    Frequency or recurrence label. Used in scheduling, reporting
+    cadence, and time-series metadata.
+  designation: broad_words
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "{col}"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    enum:
+      - "Once"
+      - "Daily"
+      - "Weekly"
+      - "Biweekly"
+      - "Monthly"
+      - "Quarterly"
+      - "Yearly"
+      - "Never"
+  tier: [VARCHAR, component]
+  release_priority: 1
+  aliases: []
+  samples:
+    - "Daily"
+    - "Monthly"
+    - "Quarterly"
+  references: null
+  notes: null
