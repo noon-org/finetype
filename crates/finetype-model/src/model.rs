@@ -185,10 +185,10 @@ impl TextClassifier {
         }
         
         // Take CLS token (first position) for classification
-        let cls_output = hidden.narrow(1, 0, 1)?.squeeze(1)?;
+        let cls_output = hidden.narrow(1, 0, 1)?.squeeze(1)?.contiguous()?;
         
         // Classification head
-        let logits = self.classifier.forward(&cls_output)?;
+        let logits = self.classifier.forward(&cls_output)?.contiguous()?;
         
         Ok(logits)
     }

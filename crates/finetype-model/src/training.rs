@@ -121,6 +121,7 @@ impl Trainer {
                 
                 // Forward pass
                 let logits = model.forward(&input_ids, Some(&attention_mask))?;
+                let logits = logits.contiguous()?;
                 
                 // Compute loss (cross-entropy)
                 let loss = candle_nn::loss::cross_entropy(&logits, &labels)?;
