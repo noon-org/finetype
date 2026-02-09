@@ -287,7 +287,9 @@ impl Taxonomy {
     pub fn from_yaml(yaml: &str) -> Result<Self, TaxonomyError> {
         let raw: HashMap<String, Definition> = serde_yaml::from_str(yaml)?;
         
-        let labels: Vec<String> = raw.keys().cloned().collect();
+        // Sort labels for deterministic ordering across training and inference
+        let mut labels: Vec<String> = raw.keys().cloned().collect();
+        labels.sort();
         
         Ok(Taxonomy {
             definitions: raw,

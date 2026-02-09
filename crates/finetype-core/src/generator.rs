@@ -204,10 +204,8 @@ impl Generator {
             ("address", "isd_code") => Ok(format!("+{}", self.rng.gen_range(1..999))),
             ("address", "calling_code") => Ok(format!("+{}", self.rng.gen_range(1..999))),
             ("address", "continent") => Ok(["Africa", "Antarctica", "Asia", "Europe", "North America", "Oceania", "South America"][self.rng.gen_range(0..7)].to_string()),
-            ("address", "region") => Ok(fakeit::address::state()),
-            ("address", "province") => Ok(fakeit::address::state()),
-            ("address", "prefecture") => Ok(fakeit::address::state()),
-            ("address", "federal_subject") => Ok(fakeit::address::state()),
+            // Subdivision covers: state, province, region, prefecture, federal_subject
+            ("address", "subdivision") => Ok(fakeit::address::state()),
 
             // ═══════════════════════════════════════════════════════════════════
             // CODE - Identifiers

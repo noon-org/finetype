@@ -13,9 +13,9 @@ Cargo.lock
 # macOS
 .DS_Store
 
-# Model weights (tracked via Git LFS or downloaded)
-models/*.bin
-models/*.safetensors
+# Model weights (push to HuggingFace)
+models/**/*.bin
+models/**/*.safetensors
 !models/.gitkeep
 
 # Generated training data
