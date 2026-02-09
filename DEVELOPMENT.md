@@ -20,7 +20,7 @@ Each class in the taxonomy is a **transformation contract** — not just a label
 
 ---
 
-## Taxonomy Design (v2)
+## Taxonomy
 
 ### Label Format
 
@@ -41,13 +41,24 @@ Examples:
 - `technology.internet.ip_v4.UNIVERSAL`
 - `identity.person.phone_number.EN_AU`
 
+### 151 Type Definitions Across 6 Domains
+
+| Domain | Types | Categories |
+|--------|-------|------------|
+| `datetime` | 46 | timestamp (12), date (17), time (5), epoch (3), offset (2), duration (1), component (6) |
+| `technology` | 34 | internet (13), cryptographic (4), code (6), development (7), hardware (4) |
+| `identity` | 25 | person (16), payment (7), academic (2) |
+| `geography` | 16 | location (5), address (5), coordinate (3), transportation (2), contact (1) |
+| `representation` | 19 | numeric (5), text (6), file (3), scientific (5) |
+| `container` | 11 | object (5), array (4), key_value (2) |
+
 ### Naming Conventions
 
 - Levels use `snake_case`
 - Locales use `SCREAMING_SNAKE_CASE`
 - When choosing canonical names, prefer explicit over abbreviated (`top_level_domain` over `tld`)
 - Deprecated/aliased names are listed in the `aliases` field
-- **No variant concept** — every distinct format is its own type with its own transformation contract. What v1 called "variants" (e.g., `short_year__ymd`) are now separate types (`short_ymd`)
+- **No variant concept** — every distinct format is its own type with its own transformation contract
 
 ### Domains
 
@@ -68,9 +79,9 @@ Examples:
 
 ---
 
-## Definition Schema (v2 YAML Spec)
+## Definition Schema
 
-Reference implementation: `labels/definitions_v2_datetime.yaml`
+Definition files: `labels/definitions_*.yaml` (one per domain)
 
 ### YAML Key
 
@@ -97,7 +108,7 @@ datetime.timestamp.iso_8601:
     maxLength: 20
 
   # === Inference Graph ===
-  tier: [TIMESTAMP, timestamp]           # Path from Tier 0 → parent. This type is Tier 2.
+  tier: [TIMESTAMP, timestamp]           # Path from Tier 0 -> parent. This type is Tier 2.
 
   # === Metadata ===
   release_priority: 5                    # 1-5. Higher = ship first. Models trained at priority thresholds.
@@ -137,7 +148,7 @@ datetime.timestamp.iso_8601:
 | `validation` | object | yes | JSON Schema fragment. Supports: `type`, `pattern`, `minLength`, `maxLength`, `minimum`, `maximum`, `enum`, `examples` |
 | `tier` | list[string] | yes | Inference graph path from Tier 0 (broad type) to parent category |
 | `release_priority` | int (1-5) | yes | Training inclusion threshold. 5 = highest priority |
-| `aliases` | list[string]\|null | no | Alternative names (v1 names, abbreviations, common synonyms) |
+| `aliases` | list[string]\|null | no | Alternative names (abbreviations, common synonyms) |
 | `samples` | list[string] | yes | Example values for documentation, testing, and generation validation |
 | `references` | list[object]\|null | no | External docs: `[{title: string, link: string}]` |
 | `notes` | string\|null | no | Development notes |
@@ -189,13 +200,6 @@ Inference walks the tree:
 3. Run FineType inference on each field's sampled values
 4. Generate complete decomposition SQL with per-field types
 
-### Duplicate Resolution
-
-- Duplicates are removed. One canonical name per format.
-- Canonical name chosen by: most explicit and intuitive name wins (`top_level_domain` > `tld`, `phone_number` > `telephone`, `last_name` > `surname`)
-- Retired names listed in `aliases` with documentation of the choice
-- The `notes` field records `v1 name: old.name` for migration tracking
-
 ### `broad_*` Designations
 
 Types designated `broad_numbers`, `broad_words`, `broad_characters`, `broad_object` are:
@@ -212,21 +216,21 @@ A single flat model cannot scale to 500+ classes. FineType uses a **graph of inf
 
 ```
 Tier 0: Broad Type (7-10 classes)
-├── TIMESTAMP → Tier 1: timestamp category model
-│   ├── iso_8601, sql_standard, american, european, rfc_2822, ...
-│   └── (each is a Tier 2 leaf)
-├── DATE → Tier 1: date category model
-│   ├── iso, us_slash, eu_slash, eu_dot, compact_ymd, ...
-│   └── abbreviated_month, weekday_full_month, ...
-├── TIME → Tier 1: time model
-├── BIGINT → Tier 1: epoch vs port vs other integers
-├── VARCHAR → Tier 1: category model (internet, person, code, payment, ...)
-│   ├── internet → Tier 2: ip_v4, ip_v6, mac_address, url, ...
-│   └── person → Tier 2: email, phone_number, username, ...
-├── BOOLEAN
-├── UUID
-├── INTERVAL
-└── JSON / container → recursive inference
++-- TIMESTAMP -> Tier 1: timestamp category model
+|   +-- iso_8601, sql_standard, american, european, rfc_2822, ...
+|   \-- (each is a Tier 2 leaf)
++-- DATE -> Tier 1: date category model
+|   +-- iso, us_slash, eu_slash, eu_dot, compact_ymd, ...
+|   \-- abbreviated_month, weekday_full_month, ...
++-- TIME -> Tier 1: time model
++-- BIGINT -> Tier 1: epoch vs port vs other integers
++-- VARCHAR -> Tier 1: category model (internet, person, code, payment, ...)
+|   +-- internet -> Tier 2: ip_v4, ip_v6, mac_address, url, ...
+|   \-- person -> Tier 2: email, phone_number, username, ...
++-- BOOLEAN
++-- UUID
++-- INTERVAL
+\-- JSON / container -> recursive inference
 ```
 
 Each tier:
@@ -246,66 +250,75 @@ Each tier:
 
 ```
 finetype/
-├── crates/
-│   ├── finetype-core/        # Taxonomy, tokenizer, data generation, JSON Schema validation
-│   ├── finetype-model/       # Candle CNN model, tiered inference engine
-│   ├── finetype-cli/         # CLI binary
-│   └── finetype-duckdb/      # DuckDB extension (planned)
-├── labels/
-│   ├── definitions.yaml      # v1 definitions (208 types, legacy format)
-│   ├── definitions_v1.yaml   # v1 definitions (historical reference)
-│   └── definitions_v2_datetime.yaml  # v2 datetime domain (reference implementation)
-├── models/
-│   ├── char_v1/              # Character-level CNN v1
-│   ├── char_v2/              # Character-level CNN v2 (current)
-│   └── default/              # → symlink to best available model
-├── schemas/                  # Exported JSON Schema files per type (planned)
-├── data/                     # Training data
-└── scripts/                  # Utility scripts
++-- crates/
+|   +-- finetype-core/        # Taxonomy, tokenizer, data generation
+|   +-- finetype-model/       # Candle CNN model, tiered inference engine
+|   +-- finetype-cli/         # CLI binary
+|   \-- finetype-duckdb/      # DuckDB extension (planned)
++-- labels/
+|   +-- definitions_datetime.yaml
+|   +-- definitions_technology.yaml
+|   +-- definitions_identity.yaml
+|   +-- definitions_geography.yaml
+|   +-- definitions_representation.yaml
+|   +-- definitions_container.yaml
+|   \-- legacy/               # Old v1 definition files
++-- models/                   # Trained model weights
++-- data/                     # Training data (generated)
+\-- scripts/                  # Utility scripts
 ```
 
 ### Crate Responsibilities
 
 | Crate | Role | Key Dependencies |
 |-------|------|------------------|
-| `finetype-core` | Taxonomy parsing, data generation, JSON Schema validation, tokenizer | `serde_yaml`, `jsonschema`, `fake` (replacing `fakeit`) |
+| `finetype-core` | Taxonomy parsing, data generation, tokenizer | `serde_yaml`, `fake`, `glob`, `chrono`, `uuid` |
 | `finetype-model` | CNN inference, tiered model loading, confidence scoring | `candle-core`, `candle-nn` |
-| `finetype-cli` | CLI binary: `infer`, `validate`, `generate`, `taxonomy` | `clap`, `finetype-core`, `finetype-model` |
-| `finetype-duckdb` | DuckDB extension: `finetype()`, `finetype_profile()`, `finetype_unpack()` | `duckdb-extension-framework`, `finetype-core`, `finetype-model` |
+| `finetype-cli` | CLI binary: `infer`, `generate`, `train`, `taxonomy` | `clap`, `finetype-core`, `finetype-model` |
+| `finetype-duckdb` | DuckDB extension (planned) | `duckdb-extension-framework`, `finetype-core`, `finetype-model` |
 
-CLI and DuckDB extension are separate build targets sharing the same core and model crates. They produce different artifacts and do not conflict at install time.
+### Key Types
+
+| Type | Crate | Description |
+|------|-------|-------------|
+| `Taxonomy` | core | Loads and queries 151 definitions from YAML files |
+| `Definition` | core | Single type definition with transform, validation, metadata |
+| `Label` | core | Parsed `domain.category.type` with accessors |
+| `Designation` | core | Scope enum: `Universal`, `LocaleSpecific`, `BroadNumbers`, etc. |
+| `Generator` | core | Synthetic data generator for all 151 types |
+| `Sample` | core | Generated `{text, label}` pair for training |
+| `Tokenizer` | core | HuggingFace BERT tokenizer wrapper |
 
 ---
 
 ## Development Roadmap
 
-### Phase 1: Taxonomy v2 (current)
+### Phase 1: Taxonomy -- DONE
 
-- [x] Design v2 YAML spec with transformation contracts
-- [x] Draft `datetime` domain as reference implementation (46 types)
-- [ ] Draft remaining domains: `technology`, `identity`, `geography`, `representation`, `container`
-- [ ] Resolve all duplicates across domains (canonical name + aliases)
-- [ ] Assign `broad_type`, `transform`, `validation` to every definition including `broad_*` types
-- [ ] Export JSON Schema files for each type
-- [ ] Update `finetype-core/taxonomy.rs` to parse v2 schema
+- [x] Design YAML spec with transformation contracts
+- [x] Draft all 6 domains: `datetime` (46), `technology` (34), `identity` (25), `geography` (16), `representation` (19), `container` (11)
+- [x] Resolve all duplicates across domains (canonical name + aliases)
+- [x] Assign `broad_type`, `transform`, `validation` to every definition
+- [x] Implement `Taxonomy` parser with `from_file` and `from_directory` loaders
 
-### Phase 2: Data Generation
+### Phase 2: Data Generation -- DONE
 
-- [ ] Replace `fakeit` with [`fake-rs`](https://github.com/cksac/fake-rs) for locale-aware generation
-- [ ] Add [`phonenumber`](https://crates.io/crates/phonenumber) / [`phonelib`](https://crates.io/crates/phonelib) for per-country phone generation
-- [ ] Add [`iban_validate`](https://crates.io/crates/iban_validate) + [`iban_gen`](https://lib.rs/crates/iban_gen) for IBAN generation
+- [x] Implement `Generator` with synthetic data for all 151 types
+- [x] Verify 1:1 alignment between generator match arms and YAML definition keys
+- [x] Add workspace dependencies: `fake`, `base64`, `sha2`, `md-5`, `glob`
+- [ ] Add [`phonenumber`](https://crates.io/crates/phonenumber) for per-country phone generation
 - [ ] Add [`luhn`](https://github.com/pacak/luhn) for credit card / IMEI checksum validation
-- [ ] Add [`email_address`](https://crates.io/crates/email_address) for RFC-compliant email validation
-- [ ] Implement generators for all v2 definitions
 - [ ] Generate training data with full `domain.category.type.locale` labels
 
-### Phase 3: Model Training
+### Phase 3: Build & Train -- NEXT
 
-- [ ] Train Tier 0 model (broad type detection, ~10 classes)
-- [ ] Train Tier 1 models per broad type (category detection)
-- [ ] Train Tier 2 models per category (specific format detection)
+- [ ] Install Rust toolchain and verify `cargo build` succeeds
+- [ ] Run `cargo test --all` to validate taxonomy parser and generator
+- [ ] Generate training dataset: `finetype generate --samples 500 --output data/train.ndjson`
+- [ ] Train CharCNN model on 151-label taxonomy
+- [ ] Benchmark: single-value accuracy, inference latency
+- [ ] Train tiered models (Tier 0 broad type, Tier 1 per-category)
 - [ ] Implement column-mode inference with distribution-based disambiguation
-- [ ] Benchmark: single-value accuracy, column-mode accuracy, inference latency
 
 ### Phase 4: Validation Engine
 
@@ -317,24 +330,21 @@ CLI and DuckDB extension are separate build targets sharing the same core and mo
 ### Phase 5: DuckDB Extension
 
 - [ ] Set up `finetype-duckdb` crate using [Rust extension template](https://github.com/duckdb/extension-template-rs)
-- [ ] Implement `finetype(col)` — single-value type detection
-- [ ] Implement `finetype_profile(col)` — column profiling with stats
-- [ ] Implement `finetype_unpack(col)` — recursive decomposition SQL generation
-- [ ] Implement `finetype_cast(col)` — automatic type casting
+- [ ] Implement `finetype(col)` -- single-value type detection
+- [ ] Implement `finetype_profile(col)` -- column profiling with stats
+- [ ] Implement `finetype_unpack(col)` -- recursive decomposition SQL generation
+- [ ] Implement `finetype_cast(col)` -- automatic type casting
 - [ ] Embed taxonomy + model weights at compile time
 - [ ] Test extension-aware transforms (inet, spatial, monetary, netquack)
 
 ### Phase 6: Open Source & HuggingFace
 
 - [ ] Publish under `noon-org/finetype` on GitHub (public)
-- [ ] Upload model artifacts to HuggingFace (`noon-org/finetype-char-cnn-v2`)
+- [ ] Upload model artifacts to HuggingFace (`noon-org/finetype-char-cnn`)
 - [ ] Upload training dataset to HuggingFace Datasets
 - [ ] Write model card with benchmarks and limitations
-- [ ] Write dataset card documenting generation process
 - [ ] Publish `finetype-cli` to crates.io
 - [ ] Submit DuckDB extension to community extensions
-- [ ] README overhaul with badges, quick-start, taxonomy reference
-- [ ] CONTRIBUTING.md — how to add types, generate data, train models
 
 ---
 
@@ -354,38 +364,21 @@ A flat model with 500+ classes has poor accuracy and is expensive to retrain. Ti
 
 ### Why Full Taxonomy Paths?
 
-1. **Tiered inference** — domain and category enable the model graph
-2. **Filtering** — `SELECT * WHERE finetype LIKE 'datetime.%'`
-3. **Locale awareness** — `phone_number.EN_AU` vs `phone_number.DE`
-4. **Transformation lookup** — the full path uniquely identifies the transform function
+1. **Tiered inference** -- domain and category enable the model graph
+2. **Filtering** -- `SELECT * WHERE finetype LIKE 'datetime.%'`
+3. **Locale awareness** -- `phone_number.EN_AU` vs `phone_number.DE`
+4. **Transformation lookup** -- the full path uniquely identifies the transform function
 
 ### Why Candle (not Burn)?
 
 - Pure Rust, no Python runtime, no external C++ dependencies
 - Integrates cleanly with DuckDB extension (single binary)
 - Good Metal/CUDA support
-- `hughcameron/finetype` (v1) used Burn+LibTorch — useful for experimentation but LibTorch dependency is heavy for distribution
+- `hughcameron/finetype` (v1) used Burn+LibTorch -- useful for experimentation but LibTorch dependency is heavy for distribution
 
 ### Why DuckDB Extension + CLI on Same Codebase?
 
-Both are thin wrappers around `finetype-core` and `finetype-model`. The CLI loads taxonomy/models from disk; the extension embeds them at compile time via `include_bytes!`. No conflict — different build targets, different artifacts, shared logic.
-
----
-
-## Related Repositories
-
-- **noon-org/finetype** (this repo) — Production codebase. Candle-based, v2 taxonomy, DuckDB integration.
-- **hughcameron/finetype** — v1 experiments. Burn+LibTorch training, Python data generation with mimesis, HuggingFace dataset upload pipeline (`hughcameron/finetype_01`).
-
-### Key v1 References
-
-| v1 Asset | Purpose | Location |
-|----------|---------|----------|
-| `models/core.py` | Original Pydantic data model (Domain, Sector, Definition, Variant, Locale) | `hughcameron/finetype/labels/models/core.py` |
-| `domain_match.tsv` | Maps domain → sector → definition (the 3-tier hierarchy) | `hughcameron/finetype/labels/domain_match.tsv` |
-| `release.py` | Python data generator using mimesis with locale support | `hughcameron/finetype/labels/release.py` |
-| `split_data.sql` | DuckDB SQL for train/test splitting and HuggingFace upload | `hughcameron/finetype/labels/split_data.sql` |
-| `classifier/` | Burn-based transformer classifier (Rust) | `hughcameron/finetype/classifier/` |
+Both are thin wrappers around `finetype-core` and `finetype-model`. The CLI loads taxonomy/models from disk; the extension embeds them at compile time via `include_bytes!`. No conflict -- different build targets, different artifacts, shared logic.
 
 ---
 
@@ -396,17 +389,27 @@ Both are thin wrappers around `finetype-core` and `finetype-model`. The CLI load
 cargo build --release
 
 # Run inference
-./target/release/finetype infer -i "192.168.1.1" --model models/char_v2
+./target/release/finetype infer -i "192.168.1.1" --model models/default
 
 # Generate training data
-./target/release/finetype generate --samples 10000 --output data/train.ndjson
+./target/release/finetype generate --samples 500 --output data/train.ndjson
 
-# Train model
-./target/release/finetype train --data data/train.ndjson --epochs 10
+# Train CharCNN model
+./target/release/finetype train --data data/train.ndjson --model-type char-cnn --epochs 10
 
 # Show taxonomy
-./target/release/finetype taxonomy --list
+./target/release/finetype taxonomy
+
+# Show taxonomy for a specific domain
+./target/release/finetype taxonomy --domain datetime
 
 # Run tests
 cargo test --all
 ```
+
+---
+
+## Related Repositories
+
+- **noon-org/finetype** (this repo) -- Production codebase. Candle-based, DuckDB integration.
+- **hughcameron/finetype** -- v1 experiments. Burn+LibTorch training, Python data generation with mimesis, HuggingFace dataset upload pipeline (`hughcameron/finetype_01`).
