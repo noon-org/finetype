@@ -1,9 +1,14 @@
 //! Taxonomy definitions for FineType labels.
 //!
 //! The taxonomy is organized hierarchically:
-//! - Provider (e.g., `address`, `datetime`, `internet`)
-//! - Method (e.g., `ip_v4`, `email`, `iso_8601`)
-//! - Full label: `provider.method`
+//! - Domain (e.g., `datetime`, `technology`, `identity`)
+//! - Category (e.g., `timestamp`, `internet`, `person`)
+//! - Type (e.g., `iso_8601`, `ip_v4`, `email`)
+//! - Full label: `domain.category.type.LOCALE`
+//!
+//! Each definition is a transformation contract — not just a label.
+//! If the model says `datetime.date.us_slash`, that is a contract that
+//! `strptime(value, '%m/%d/%Y')::DATE` will succeed.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -17,123 +22,12 @@ pub enum TaxonomyError {
     IoError(#[from] std::io::Error),
     #[error("Failed to parse taxonomy YAML: {0}")]
     ParseError(#[from] serde_yaml::Error),
-    #[error("Unknown label: {0}")]
-    UnknownLabel(String),
-}
-
-/// Locale identifier for locale-specific labels.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Locale {
-    Universal,
-    En,
-    EnAu,
-    EnCa,
-    EnGb,
-    De,
-    DeAt,
-    DeCh,
-    Fr,
-    Es,
-    EsMx,
-    It,
-    Pt,
-    PtBr,
-    Nl,
-    NlBe,
-    Ja,
-    Ko,
-    Zh,
-    Ru,
-    Pl,
-    Cs,
-    Da,
-    Fi,
-    Sv,
-    No,
-    Hu,
-    Hr,
-    Sk,
-    Et,
-    El,
-    Tr,
-    Uk,
-    Fa,
-    Is,
-    Kk,
-    #[serde(rename = "AR_AE")]
-    ArAe,
-    #[serde(rename = "AR_DZ")]
-    ArDz,
-    #[serde(rename = "AR_EG")]
-    ArEg,
-    #[serde(rename = "AR_JO")]
-    ArJo,
-    #[serde(rename = "AR_OM")]
-    ArOm,
-    #[serde(rename = "AR_SY")]
-    ArSy,
-    #[serde(rename = "AR_YE")]
-    ArYe,
-    #[serde(other)]
-    Other,
-}
-
-impl Default for Locale {
-    fn default() -> Self {
-        Locale::Universal
-    }
-}
-
-impl std::fmt::Display for Locale {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Locale::Universal => write!(f, "UNIVERSAL"),
-            Locale::En => write!(f, "EN"),
-            Locale::EnAu => write!(f, "EN_AU"),
-            Locale::EnCa => write!(f, "EN_CA"),
-            Locale::EnGb => write!(f, "EN_GB"),
-            Locale::De => write!(f, "DE"),
-            Locale::DeAt => write!(f, "DE_AT"),
-            Locale::DeCh => write!(f, "DE_CH"),
-            Locale::Fr => write!(f, "FR"),
-            Locale::Es => write!(f, "ES"),
-            Locale::EsMx => write!(f, "ES_MX"),
-            Locale::It => write!(f, "IT"),
-            Locale::Pt => write!(f, "PT"),
-            Locale::PtBr => write!(f, "PT_BR"),
-            Locale::Nl => write!(f, "NL"),
-            Locale::NlBe => write!(f, "NL_BE"),
-            Locale::Ja => write!(f, "JA"),
-            Locale::Ko => write!(f, "KO"),
-            Locale::Zh => write!(f, "ZH"),
-            Locale::Ru => write!(f, "RU"),
-            Locale::Pl => write!(f, "PL"),
-            Locale::Cs => write!(f, "CS"),
-            Locale::Da => write!(f, "DA"),
-            Locale::Fi => write!(f, "FI"),
-            Locale::Sv => write!(f, "SV"),
-            Locale::No => write!(f, "NO"),
-            Locale::Hu => write!(f, "HU"),
-            Locale::Hr => write!(f, "HR"),
-            Locale::Sk => write!(f, "SK"),
-            Locale::Et => write!(f, "ET"),
-            Locale::El => write!(f, "EL"),
-            Locale::Tr => write!(f, "TR"),
-            Locale::Uk => write!(f, "UK"),
-            Locale::Fa => write!(f, "FA"),
-            Locale::Is => write!(f, "IS"),
-            Locale::Kk => write!(f, "KK"),
-            Locale::ArAe => write!(f, "AR_AE"),
-            Locale::ArDz => write!(f, "AR_DZ"),
-            Locale::ArEg => write!(f, "AR_EG"),
-            Locale::ArJo => write!(f, "AR_JO"),
-            Locale::ArOm => write!(f, "AR_OM"),
-            Locale::ArSy => write!(f, "AR_SY"),
-            Locale::ArYe => write!(f, "AR_YE"),
-            Locale::Other => write!(f, "OTHER"),
-        }
-    }
+    #[error("Invalid label key (expected domain.category.type): {0}")]
+    InvalidKey(String),
+    #[error("No definition files found in: {0}")]
+    NoFiles(String),
+    #[error("Glob pattern error: {0}")]
+    GlobError(String),
 }
 
 /// Designation indicates the scope and stability of a label.
@@ -152,8 +46,6 @@ pub enum Designation {
     BroadWords,
     /// Broad category - objects/structured data
     BroadObject,
-    /// Duplicate of another label
-    Duplicate,
 }
 
 impl Default for Designation {
@@ -162,11 +54,20 @@ impl Default for Designation {
     }
 }
 
-/// Reference link for a definition.
+/// JSON Schema validation fragment.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Reference {
-    pub title: String,
-    pub link: String,
+pub struct Validation {
+    #[serde(rename = "type")]
+    pub schema_type: Option<String>,
+    pub pattern: Option<String>,
+    #[serde(rename = "minLength")]
+    pub min_length: Option<u32>,
+    #[serde(rename = "maxLength")]
+    pub max_length: Option<u32>,
+    pub minimum: Option<f64>,
+    pub maximum: Option<f64>,
+    #[serde(rename = "enum")]
+    pub enum_values: Option<Vec<String>>,
 }
 
 /// A single label definition in the taxonomy.
@@ -176,96 +77,79 @@ pub struct Definition {
     pub title: Option<String>,
     /// Description of the label
     pub description: Option<String>,
-    /// Aliases for this label
-    pub aliases: Option<Vec<String>>,
     /// Designation/scope of the label
     #[serde(default)]
     pub designation: Designation,
     /// Supported locales
     #[serde(default)]
-    pub locales: Vec<Locale>,
-    /// Provider name (e.g., "address", "datetime")
-    pub provider: String,
-    /// Method name (e.g., "ip_v4", "iso_8601")
-    pub method: String,
-    /// Notes about the label
-    pub notes: Option<String>,
-    /// Primitive type (str, int, float, etc.)
-    pub primitive: Option<String>,
-    /// External references
-    pub references: Option<Vec<Reference>>,
+    pub locales: Vec<String>,
+    /// Target DuckDB type
+    pub broad_type: Option<String>,
+    /// DuckDB strptime format string (null if not strptime-based)
+    pub format_string: Option<String>,
+    /// DuckDB SQL expression ({col} = column placeholder)
+    pub transform: Option<String>,
+    /// Enhanced transform requiring a DuckDB extension
+    pub transform_ext: Option<String>,
+    /// Struct expansion for multi-field output
+    #[serde(default)]
+    pub decompose: Option<serde_yaml::Value>,
+    /// JSON Schema fragment for data quality checks
+    pub validation: Option<Validation>,
+    /// Path from root to parent in the inference graph
+    #[serde(default)]
+    pub tier: Vec<String>,
     /// Release priority (higher = more important)
     #[serde(default)]
     pub release_priority: u8,
+    /// Aliases for this label
+    pub aliases: Option<Vec<String>>,
     /// Example samples
     #[serde(default)]
     pub samples: Vec<serde_yaml::Value>,
+    /// External references
+    pub references: Option<serde_yaml::Value>,
+    /// Notes about the label
+    pub notes: Option<String>,
 }
 
-impl Definition {
-    /// Get the full label name (provider.method)
-    pub fn label(&self) -> String {
-        format!("{}.{}", self.provider, self.method)
-    }
-
-    /// Check if this definition should be included at a given priority level
-    pub fn included_at_priority(&self, min_priority: u8) -> bool {
-        self.release_priority >= min_priority
-    }
-
-    /// Check if this is a universal (locale-independent) definition
-    pub fn is_universal(&self) -> bool {
-        self.locales.len() == 1 && self.locales[0] == Locale::Universal
-    }
-}
-
-/// A parsed label with provider and method components.
+/// Parsed label with domain, category, and type components.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Label {
-    pub provider: String,
-    pub method: String,
-    pub locale: Option<Locale>,
+    pub domain: String,
+    pub category: String,
+    pub type_name: String,
 }
 
 impl Label {
-    /// Parse a label string like "datetime.iso_8601" or "datetime.iso_8601.EN"
+    /// Parse a label key like "datetime.timestamp.iso_8601"
     pub fn parse(s: &str) -> Option<Self> {
         let parts: Vec<&str> = s.split('.').collect();
-        match parts.len() {
-            2 => Some(Label {
-                provider: parts[0].to_string(),
-                method: parts[1].to_string(),
-                locale: None,
-            }),
-            3 => {
-                // Parse locale (simplified for now)
-                Some(Label {
-                    provider: parts[0].to_string(),
-                    method: parts[1].to_string(),
-                    locale: Some(Locale::Universal),
-                })
-            }
-            _ => None,
+        if parts.len() == 3 {
+            Some(Label {
+                domain: parts[0].to_string(),
+                category: parts[1].to_string(),
+                type_name: parts[2].to_string(),
+            })
+        } else {
+            None
         }
     }
 
-    /// Get the base label without locale
-    pub fn base(&self) -> String {
-        format!("{}.{}", self.provider, self.method)
+    /// Get the full key (domain.category.type)
+    pub fn key(&self) -> String {
+        format!("{}.{}.{}", self.domain, self.category, self.type_name)
     }
 
-    /// Get the full label with locale if present
-    pub fn full(&self) -> String {
-        match &self.locale {
-            Some(loc) => format!("{}.{}.{}", self.provider, self.method, loc),
-            None => self.base(),
-        }
+    /// Get the full label with locale
+    pub fn with_locale(&self, locale: &str) -> String {
+        format!("{}.{}.{}.{}", self.domain, self.category, self.type_name, locale)
     }
 }
 
 impl std::fmt::Display for Label {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.full())
+        write!(f, "{}", self.key())
     }
 }
 
@@ -277,32 +161,62 @@ pub struct Taxonomy {
 }
 
 impl Taxonomy {
-    /// Load taxonomy from a YAML file.
+    /// Load taxonomy from a single YAML file.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, TaxonomyError> {
         let content = std::fs::read_to_string(path)?;
         Self::from_yaml(&content)
     }
 
+    /// Load taxonomy from all definitions_*.yaml files in a directory.
+    pub fn from_directory<P: AsRef<Path>>(dir: P) -> Result<Self, TaxonomyError> {
+        let pattern = dir.as_ref().join("definitions_*.yaml");
+        let pattern_str = pattern.to_string_lossy().to_string();
+
+        let paths: Vec<_> = glob::glob(&pattern_str)
+            .map_err(|e| TaxonomyError::GlobError(e.to_string()))?
+            .filter_map(|entry| entry.ok())
+            .collect();
+
+        if paths.is_empty() {
+            return Err(TaxonomyError::NoFiles(pattern_str));
+        }
+
+        let mut all_definitions = HashMap::new();
+
+        for path in paths {
+            let content = std::fs::read_to_string(&path)?;
+            let defs: HashMap<String, Definition> = serde_yaml::from_str(&content)?;
+            all_definitions.extend(defs);
+        }
+
+        let mut labels: Vec<String> = all_definitions.keys().cloned().collect();
+        labels.sort();
+
+        Ok(Taxonomy {
+            definitions: all_definitions,
+            labels,
+        })
+    }
+
     /// Parse taxonomy from YAML string.
     pub fn from_yaml(yaml: &str) -> Result<Self, TaxonomyError> {
         let raw: HashMap<String, Definition> = serde_yaml::from_str(yaml)?;
-        
-        // Sort labels for deterministic ordering across training and inference
+
         let mut labels: Vec<String> = raw.keys().cloned().collect();
         labels.sort();
-        
+
         Ok(Taxonomy {
             definitions: raw,
             labels,
         })
     }
 
-    /// Get a definition by its full label (e.g., "datetime.iso_8601")
-    pub fn get(&self, label: &str) -> Option<&Definition> {
-        self.definitions.get(label)
+    /// Get a definition by its full key (e.g., "datetime.timestamp.iso_8601")
+    pub fn get(&self, key: &str) -> Option<&Definition> {
+        self.definitions.get(key)
     }
 
-    /// Get all labels
+    /// Get all label keys (sorted)
     pub fn labels(&self) -> &[String] {
         &self.labels
     }
@@ -313,30 +227,54 @@ impl Taxonomy {
     }
 
     /// Get definitions at or above a priority level
-    pub fn at_priority(&self, min_priority: u8) -> Vec<&Definition> {
+    pub fn at_priority(&self, min_priority: u8) -> Vec<(&String, &Definition)> {
         self.definitions
-            .values()
-            .filter(|d| d.release_priority >= min_priority)
+            .iter()
+            .filter(|(_, d)| d.release_priority >= min_priority)
             .collect()
     }
 
-    /// Get definitions by provider
-    pub fn by_provider(&self, provider: &str) -> Vec<&Definition> {
+    /// Get definitions by domain
+    pub fn by_domain(&self, domain: &str) -> Vec<(&String, &Definition)> {
         self.definitions
-            .values()
-            .filter(|d| d.provider == provider)
+            .iter()
+            .filter(|(k, _)| k.starts_with(&format!("{}.", domain)))
             .collect()
     }
 
-    /// Get all unique providers
-    pub fn providers(&self) -> Vec<String> {
-        let mut providers: Vec<String> = self.definitions
-            .values()
-            .map(|d| d.provider.clone())
+    /// Get definitions by domain and category
+    pub fn by_category(&self, domain: &str, category: &str) -> Vec<(&String, &Definition)> {
+        let prefix = format!("{}.{}.", domain, category);
+        self.definitions
+            .iter()
+            .filter(|(k, _)| k.starts_with(&prefix))
+            .collect()
+    }
+
+    /// Get all unique domains
+    pub fn domains(&self) -> Vec<String> {
+        let mut domains: Vec<String> = self
+            .definitions
+            .keys()
+            .filter_map(|k| k.split('.').next().map(String::from))
             .collect();
-        providers.sort();
-        providers.dedup();
-        providers
+        domains.sort();
+        domains.dedup();
+        domains
+    }
+
+    /// Get all unique categories within a domain
+    pub fn categories(&self, domain: &str) -> Vec<String> {
+        let prefix = format!("{}.", domain);
+        let mut cats: Vec<String> = self
+            .definitions
+            .keys()
+            .filter(|k| k.starts_with(&prefix))
+            .filter_map(|k| k.split('.').nth(1).map(String::from))
+            .collect();
+        cats.sort();
+        cats.dedup();
+        cats
     }
 
     /// Number of definitions
@@ -372,21 +310,81 @@ impl Taxonomy {
 mod tests {
     use super::*;
 
+    const SAMPLE_YAML: &str = r#"
+datetime.timestamp.iso_8601:
+  title: "ISO 8601"
+  description: "Standard international datetime format"
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: "%Y-%m-%dT%H:%M:%SZ"
+  transform: "strptime({col}, '%Y-%m-%dT%H:%M:%SZ')"
+  transform_ext: null
+  decompose: null
+  validation:
+    type: string
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    minLength: 20
+    maxLength: 20
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  aliases: [big_endian]
+  samples:
+    - "2024-01-15T10:30:00Z"
+  references: null
+  notes: null
+"#;
+
     #[test]
-    fn test_label_parse() {
-        let label = Label::parse("datetime.iso_8601").unwrap();
-        assert_eq!(label.provider, "datetime");
-        assert_eq!(label.method, "iso_8601");
-        assert!(label.locale.is_none());
+    fn test_parse_yaml() {
+        let taxonomy = Taxonomy::from_yaml(SAMPLE_YAML).unwrap();
+        assert_eq!(taxonomy.len(), 1);
+        assert_eq!(taxonomy.labels(), &["datetime.timestamp.iso_8601"]);
     }
 
     #[test]
-    fn test_label_display() {
-        let label = Label {
-            provider: "internet".to_string(),
-            method: "ip_v4".to_string(),
-            locale: None,
-        };
-        assert_eq!(label.to_string(), "internet.ip_v4");
+    fn test_label_parse() {
+        let label = Label::parse("datetime.timestamp.iso_8601").unwrap();
+        assert_eq!(label.domain, "datetime");
+        assert_eq!(label.category, "timestamp");
+        assert_eq!(label.type_name, "iso_8601");
+        assert_eq!(label.key(), "datetime.timestamp.iso_8601");
+    }
+
+    #[test]
+    fn test_label_with_locale() {
+        let label = Label::parse("datetime.date.abbreviated_month").unwrap();
+        assert_eq!(
+            label.with_locale("FR"),
+            "datetime.date.abbreviated_month.FR"
+        );
+    }
+
+    #[test]
+    fn test_get_definition() {
+        let taxonomy = Taxonomy::from_yaml(SAMPLE_YAML).unwrap();
+        let def = taxonomy.get("datetime.timestamp.iso_8601").unwrap();
+        assert_eq!(def.title.as_deref(), Some("ISO 8601"));
+        assert_eq!(def.broad_type.as_deref(), Some("TIMESTAMP"));
+        assert_eq!(def.release_priority, 5);
+    }
+
+    #[test]
+    fn test_domains() {
+        let taxonomy = Taxonomy::from_yaml(SAMPLE_YAML).unwrap();
+        assert_eq!(taxonomy.domains(), vec!["datetime"]);
+    }
+
+    #[test]
+    fn test_categories() {
+        let taxonomy = Taxonomy::from_yaml(SAMPLE_YAML).unwrap();
+        assert_eq!(taxonomy.categories("datetime"), vec!["timestamp"]);
+    }
+
+    #[test]
+    fn test_at_priority() {
+        let taxonomy = Taxonomy::from_yaml(SAMPLE_YAML).unwrap();
+        assert_eq!(taxonomy.at_priority(5).len(), 1);
+        assert_eq!(taxonomy.at_priority(6).len(), 0);
     }
 }

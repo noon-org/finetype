@@ -1,11 +1,11 @@
 //! FineType CLI
 //!
-//! Command-line interface for semantic type classification.
+//! Command-line interface for precision format detection.
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use finetype_core::{Generator, Taxonomy};
-use finetype_model::{Classifier};
+use finetype_model::Classifier;
 use serde_json::json;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
@@ -15,7 +15,7 @@ use tracing_subscriber::EnvFilter;
 #[command(name = "finetype")]
 #[command(author = "Hugh Cameron")]
 #[command(version)]
-#[command(about = "Semantic type classification for text data", long_about = None)]
+#[command(about = "Precision format detection for text data", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -48,7 +48,7 @@ enum Commands {
         /// Include input value in output
         #[arg(short, long)]
         value: bool,
-        
+
         /// Model type (transformer, char_cnn)
         #[arg(long, default_value = "char-cnn")]
         model_type: ModelType,
@@ -68,8 +68,8 @@ enum Commands {
         #[arg(short, long, default_value = "training.ndjson")]
         output: PathBuf,
 
-        /// Taxonomy file
-        #[arg(short, long, default_value = "labels/definitions.yaml")]
+        /// Taxonomy file or directory
+        #[arg(short, long, default_value = "labels")]
         taxonomy: PathBuf,
 
         /// Random seed for reproducibility
@@ -83,8 +83,8 @@ enum Commands {
         #[arg(short, long)]
         data: PathBuf,
 
-        /// Taxonomy file
-        #[arg(short, long, default_value = "labels/definitions.yaml")]
+        /// Taxonomy file or directory
+        #[arg(short, long, default_value = "labels")]
         taxonomy: PathBuf,
 
         /// Output directory for model
@@ -102,27 +102,31 @@ enum Commands {
         /// Device (cpu, cuda, metal)
         #[arg(long, default_value = "cpu")]
         device: String,
-        
+
         /// Model type (transformer, char_cnn)
-        #[arg(long, default_value = "transformer")]
+        #[arg(long, default_value = "char-cnn")]
         model_type: ModelType,
     },
 
     /// Show taxonomy information
     Taxonomy {
-        /// Taxonomy file
-        #[arg(short, long, default_value = "labels/definitions.yaml")]
+        /// Taxonomy file or directory
+        #[arg(short, long, default_value = "labels")]
         file: PathBuf,
 
-        /// Filter by provider
+        /// Filter by domain
         #[arg(short, long)]
-        provider: Option<String>,
+        domain: Option<String>,
+
+        /// Filter by category
+        #[arg(short, long)]
+        category: Option<String>,
 
         /// Minimum release priority
         #[arg(long)]
         priority: Option<u8>,
 
-        /// Output format (plain, json)
+        /// Output format (plain, json, csv)
         #[arg(short, long, default_value = "plain")]
         output: OutputFormat,
     },
@@ -180,10 +184,11 @@ fn main() -> Result<()> {
 
         Commands::Taxonomy {
             file,
-            provider,
+            domain,
+            category,
             priority,
             output,
-        } => cmd_taxonomy(file, provider, priority, output),
+        } => cmd_taxonomy(file, domain, category, priority, output),
     }
 }
 
@@ -197,7 +202,7 @@ fn cmd_infer(
     model_type: ModelType,
 ) -> Result<()> {
     use finetype_model::{CharClassifier, ClassificationResult};
-    
+
     // Collect inputs
     let inputs: Vec<String> = if let Some(text) = input {
         vec![text]
@@ -287,6 +292,10 @@ fn cmd_infer(
     Ok(())
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// GENERATE — Create synthetic training data
+// ═══════════════════════════════════════════════════════════════════════════════
+
 fn cmd_generate(
     samples: usize,
     priority: u8,
@@ -295,7 +304,14 @@ fn cmd_generate(
     seed: u64,
 ) -> Result<()> {
     eprintln!("Loading taxonomy from {:?}", taxonomy_path);
-    let taxonomy = Taxonomy::from_file(&taxonomy_path)?;
+
+    let taxonomy = load_taxonomy(&taxonomy_path)?;
+
+    eprintln!(
+        "Loaded {} label definitions across {} domains",
+        taxonomy.len(),
+        taxonomy.domains().len()
+    );
 
     eprintln!(
         "Generating {} samples per label (priority >= {})",
@@ -321,6 +337,10 @@ fn cmd_generate(
     Ok(())
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRAIN — Train a classification model
+// ═══════════════════════════════════════════════════════════════════════════════
+
 fn cmd_train(
     data: PathBuf,
     taxonomy_path: PathBuf,
@@ -334,13 +354,13 @@ fn cmd_train(
     use std::io::BufRead;
 
     eprintln!("Loading taxonomy from {:?}", taxonomy_path);
-    let taxonomy = Taxonomy::from_file(&taxonomy_path)?;
+    let taxonomy = load_taxonomy(&taxonomy_path)?;
     eprintln!("Loaded {} label definitions", taxonomy.len());
 
     eprintln!("Loading training data from {:?}", data);
     let file = std::fs::File::open(&data)?;
     let reader = std::io::BufReader::new(file);
-    
+
     let mut samples = Vec::new();
     for line in reader.lines() {
         let line = line?;
@@ -357,7 +377,7 @@ fn cmd_train(
     match model_type {
         ModelType::Transformer => {
             use finetype_model::{Trainer, TrainingConfig};
-            
+
             let config = TrainingConfig {
                 batch_size,
                 epochs,
@@ -375,11 +395,11 @@ fn cmd_train(
         }
         ModelType::CharCnn => {
             use finetype_model::{CharTrainer, CharTrainingConfig};
-            
+
             let config = CharTrainingConfig {
                 batch_size,
                 epochs,
-                learning_rate: 1e-3, // Higher LR for CNN
+                learning_rate: 1e-3,
                 max_seq_length: 128,
                 embed_dim: 32,
                 num_filters: 64,
@@ -400,62 +420,84 @@ fn cmd_train(
     Ok(())
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAXONOMY — Display taxonomy information
+// ═══════════════════════════════════════════════════════════════════════════════
+
 fn cmd_taxonomy(
     file: PathBuf,
-    provider: Option<String>,
+    domain: Option<String>,
+    category: Option<String>,
     priority: Option<u8>,
     output: OutputFormat,
 ) -> Result<()> {
-    let taxonomy = Taxonomy::from_file(&file)?;
+    let taxonomy = load_taxonomy(&file)?;
 
-    let definitions: Vec<_> = if let Some(prov) = &provider {
-        taxonomy.by_provider(prov)
-    } else if let Some(prio) = priority {
-        taxonomy.at_priority(prio)
-    } else {
-        taxonomy.definitions().map(|(_, d)| d).collect()
-    };
+    // Collect matching definitions
+    let mut defs: Vec<(&String, &finetype_core::Definition)> =
+        if let (Some(dom), Some(cat)) = (&domain, &category) {
+            taxonomy.by_category(dom, cat)
+        } else if let Some(dom) = &domain {
+            taxonomy.by_domain(dom)
+        } else if let Some(prio) = priority {
+            taxonomy.at_priority(prio)
+        } else {
+            taxonomy.definitions().collect()
+        };
+
+    // Apply priority filter even when domain/category is set
+    if let Some(prio) = priority {
+        defs.retain(|(_, d)| d.release_priority >= prio);
+    }
+
+    defs.sort_by_key(|(k, _)| k.clone());
 
     match output {
         OutputFormat::Plain => {
-            println!("Providers: {:?}", taxonomy.providers());
+            println!("Domains: {:?}", taxonomy.domains());
             println!("Total labels: {}", taxonomy.len());
+            if let Some(dom) = &domain {
+                println!("Categories in {}: {:?}", dom, taxonomy.categories(dom));
+            }
             println!();
 
-            for def in definitions {
+            for (key, def) in &defs {
+                let broad = def.broad_type.as_deref().unwrap_or("?");
                 println!(
-                    "{}.{} (priority: {}, designation: {:?})",
-                    def.provider, def.method, def.release_priority, def.designation
+                    "{} \u{2192} {} (priority: {}, {:?})",
+                    key, broad, def.release_priority, def.designation
                 );
                 if let Some(title) = &def.title {
                     println!("  {}", title);
                 }
             }
+
+            println!("\n{} definitions shown", defs.len());
         }
         OutputFormat::Json => {
-            let labels: Vec<_> = definitions
+            let labels: Vec<_> = defs
                 .iter()
-                .map(|d| {
+                .map(|(key, d)| {
                     json!({
-                        "label": d.label(),
-                        "provider": d.provider,
-                        "method": d.method,
-                        "priority": d.release_priority,
-                        "designation": format!("{:?}", d.designation),
+                        "key": key,
                         "title": d.title,
+                        "broad_type": d.broad_type,
+                        "designation": format!("{:?}", d.designation),
+                        "priority": d.release_priority,
+                        "transform": d.transform,
+                        "locales": d.locales,
                     })
                 })
                 .collect();
             println!("{}", serde_json::to_string_pretty(&labels)?);
         }
         OutputFormat::Csv => {
-            println!("label,provider,method,priority,designation,title");
-            for def in definitions {
+            println!("key,broad_type,priority,designation,title");
+            for (key, def) in &defs {
                 println!(
-                    "\"{}\",\"{}\",\"{}\",{},\"{:?}\",\"{}\"",
-                    def.label(),
-                    def.provider,
-                    def.method,
+                    "\"{}\",\"{}\",{},\"{:?}\",\"{}\"",
+                    key,
+                    def.broad_type.as_deref().unwrap_or(""),
                     def.release_priority,
                     def.designation,
                     def.title.as_deref().unwrap_or("")
@@ -465,4 +507,17 @@ fn cmd_taxonomy(
     }
 
     Ok(())
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Load taxonomy from a file or directory.
+fn load_taxonomy(path: &PathBuf) -> Result<Taxonomy> {
+    if path.is_dir() {
+        Ok(Taxonomy::from_directory(path)?)
+    } else {
+        Ok(Taxonomy::from_file(path)?)
+    }
 }
