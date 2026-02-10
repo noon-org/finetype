@@ -23,7 +23,7 @@ identity.person.email
 - **Fast inference** — Character-level CNN model (600+ classifications/sec, 8.5 MB memory)
 - **Real-world validated** — 85-100% accuracy on format-detectable types in [GitTables benchmark](https://zenodo.org/record/5706316) (2,363 columns)
 - **Pure Rust** — no Python runtime, Candle ML framework
-- **121 tests** — taxonomy validation, model inference, column disambiguation, data generation
+- **135 tests** — taxonomy validation, model inference, column disambiguation, data generation
 
 ## Installation
 
@@ -204,7 +204,7 @@ finetype profile -f data.csv
 | Crate | Role | Key Dependencies |
 |-------|------|------------------|
 | `finetype-core` | Taxonomy parsing, tokenizer, synthetic data generation (65 tests) | `serde_yaml`, `fake`, `chrono`, `uuid` |
-| `finetype-model` | Candle CharCNN inference, column-mode disambiguation (28 tests) | `candle-core`, `candle-nn` |
+| `finetype-model` | Candle CharCNN inference, column-mode disambiguation (42 tests) | `candle-core`, `candle-nn` |
 | `finetype-cli` | Binary: 9 CLI commands (28 tests) | `clap`, `csv` |
 | `finetype-duckdb` | DuckDB extension: 5 scalar functions with embedded model | `duckdb`, `libduckdb-sys` |
 
@@ -238,7 +238,7 @@ Pure Rust, no Python runtime, no external C++ dependencies. Integrates cleanly w
 # Build
 cargo build --release
 
-# Run all tests (121)
+# Run all tests (135)
 cargo test --all
 
 # Validate taxonomy (generator ↔ definition alignment)
