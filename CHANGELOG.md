@@ -8,6 +8,12 @@ All notable changes to FineType will be documented in this file.
 
 - **Column-mode inference** with distribution-based disambiguation for ambiguous types (NNFT-012, NNFT-026)
 - **Year disambiguation rule** — detects columns of 4-digit integers predominantly in 1900-2100 range (NNFT-026, NNFT-029)
+- **Post-processing rules** — 5 deterministic format-based corrections applied after model inference (NNFT-033, NNFT-034, NNFT-035):
+  - RFC 3339 vs ISO 8601 offset (T vs space separator)
+  - Cryptographic hash vs hex token (standard hash lengths: 32/40/64/128)
+  - Emoji vs gender symbol (character identity check)
+  - ISSN vs postal code (XXXX-XXX[0-9X] pattern)
+  - Longitude vs latitude (out-of-range check for |value| > 90)
 - **`finetype profile`** command — detect column types in CSV files using column-mode inference (NNFT-027)
 - **`finetype eval-gittables`** command — benchmark column-mode vs row-mode on GitTables real-world dataset (NNFT-028)
 - **`finetype validate`** command — data quality validation against taxonomy schemas with quarantine/null/fill strategies
@@ -18,14 +24,24 @@ All notable changes to FineType will be documented in this file.
 ### Fixed
 
 - Postal code rule no longer false-positives on year columns (NNFT-029)
-- Year detection threshold relaxed from 100% to 80% to handle outliers (NNFT-029)
-- Fixed accuracy number in documentation (91.97%, matching eval_results.json)
+- Year detection threshold relaxed from 100% to 80% to handle outliers (NNFT-032)
+- Fixed accuracy number in documentation (91.97%, matching eval_results.json) (NNFT-031)
+- Regenerated training/test data with corrected RFC 3339 format (space separator, not T) (NNFT-033)
+
+### Improved
+
+- Macro F1 improved from 87.9% to 90.8% via post-processing rules (+2.9 points without retraining)
+- ISSN precision: 76% → 100%, recall: 73% → 97% (NNFT-035)
+- Hash recall: 94.3% → 100% (NNFT-034)
+- Emoji and gender symbol both reach 100% precision and recall (NNFT-034)
+- Year generator range widened from 1990-2029 to 1800-2100 (NNFT-032)
 
 ### Changed
 
 - README.md comprehensively updated with all 9 CLI commands, 5 DuckDB functions, column-mode docs (NNFT-030)
 - DEVELOPMENT.md deprecated in favour of README + backlog tasks (NNFT-030)
 - Column-mode disambiguation rules: date slash, coordinate, numeric types (port, increment, postal code, street number, year)
+- Test suite expanded: 147 tests (65 core + 54 model + 28 CLI)
 
 ## [0.1.0] - 2026-02-11
 
