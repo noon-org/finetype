@@ -644,14 +644,115 @@ impl Generator {
                 Ok(format!("{}{}{}{}@{}", first, sep, last, num, domains[self.rng.gen_range(0..domains.len())]))
             }
             ("person", "phone_number") => {
-                let formats = [
-                    format!("+1 ({:03}) {:03}-{:04}", self.rng.gen_range(200..999), self.rng.gen_range(200..999), self.rng.gen_range(1000..9999)),
-                    format!("{:03}-{:03}-{:04}", self.rng.gen_range(200..999), self.rng.gen_range(200..999), self.rng.gen_range(1000..9999)),
-                    format!("+44 {:02} {:04} {:04}", self.rng.gen_range(20..79), self.rng.gen_range(1000..9999), self.rng.gen_range(1000..9999)),
-                    format!("+61 {:01} {:04} {:04}", self.rng.gen_range(2..9), self.rng.gen_range(1000..9999), self.rng.gen_range(1000..9999)),
-                    format!("+33 {:01} {:02} {:02} {:02} {:02}", self.rng.gen_range(1..9), self.rng.gen_range(10..99), self.rng.gen_range(10..99), self.rng.gen_range(10..99), self.rng.gen_range(10..99)),
-                ];
-                Ok(formats[self.rng.gen_range(0..formats.len())].clone())
+                // Locale-aware phone number generation with valid country formats
+                match self.rng.gen_range(0u8..8) {
+                    0 => {
+                        // US: +1 (NXX) NXX-XXXX (N=2-9, X=0-9)
+                        let area = self.rng.gen_range(200..999);
+                        let exchange = self.rng.gen_range(200..999);
+                        let subscriber = self.rng.gen_range(1000..9999);
+                        if self.rng.gen_bool(0.5) {
+                            Ok(format!("+1{:03}{:03}{:04}", area, exchange, subscriber))
+                        } else {
+                            Ok(format!("+1 ({:03}) {:03}-{:04}", area, exchange, subscriber))
+                        }
+                    }
+                    1 => {
+                        // GB: +44 7XXX XXXXXX (mobile) or +44 20 XXXX XXXX (London)
+                        if self.rng.gen_bool(0.6) {
+                            // Mobile
+                            let prefix = self.rng.gen_range(700..799);
+                            let a = self.rng.gen_range(100000..999999);
+                            Ok(format!("+44{:03}{:06}", prefix, a))
+                        } else {
+                            // London landline
+                            let a = self.rng.gen_range(1000..9999);
+                            let b = self.rng.gen_range(1000..9999);
+                            Ok(format!("+4420{:04}{:04}", a, b))
+                        }
+                    }
+                    2 => {
+                        // AU: +61 4XX XXX XXX (mobile) or +61 2 XXXX XXXX (Sydney)
+                        if self.rng.gen_bool(0.6) {
+                            // Mobile
+                            let prefix = self.rng.gen_range(400..499);
+                            let a = self.rng.gen_range(100..999);
+                            let b = self.rng.gen_range(100..999);
+                            Ok(format!("+61{:03}{:03}{:03}", prefix, a, b))
+                        } else {
+                            // Landline
+                            let area = [2, 3, 7, 8][self.rng.gen_range(0..4)];
+                            let a = self.rng.gen_range(1000..9999);
+                            let b = self.rng.gen_range(1000..9999);
+                            Ok(format!("+61{}{:04}{:04}", area, a, b))
+                        }
+                    }
+                    3 => {
+                        // DE: +49 1XX XXXXXXXX (mobile) or +49 30 XXXXXXXX (Berlin)
+                        if self.rng.gen_bool(0.6) {
+                            // Mobile
+                            let prefix = self.rng.gen_range(150..179);
+                            let subscriber = self.rng.gen_range(10000000..99999999);
+                            Ok(format!("+49{:03}{:08}", prefix, subscriber))
+                        } else {
+                            // Landline
+                            let area_codes = [30, 40, 69, 89, 211, 221, 351, 511, 711, 911];
+                            let area = area_codes[self.rng.gen_range(0..area_codes.len())];
+                            let subscriber = self.rng.gen_range(1000000..9999999);
+                            Ok(format!("+49{}{:07}", area, subscriber))
+                        }
+                    }
+                    4 => {
+                        // FR: +33 6 XX XX XX XX (mobile) or +33 1 XX XX XX XX (Paris)
+                        let prefix = if self.rng.gen_bool(0.6) {
+                            self.rng.gen_range(6..7) // mobile
+                        } else {
+                            self.rng.gen_range(1..5) // landline
+                        };
+                        let a = self.rng.gen_range(10..99);
+                        let b = self.rng.gen_range(10..99);
+                        let c = self.rng.gen_range(10..99);
+                        let d = self.rng.gen_range(10..99);
+                        Ok(format!("+33{}{:02}{:02}{:02}{:02}", prefix, a, b, c, d))
+                    }
+                    5 => {
+                        // ES: +34 6XX XXX XXX (mobile) or +34 9X XXX XX XX (landline)
+                        if self.rng.gen_bool(0.6) {
+                            // Mobile
+                            let prefix = self.rng.gen_range(600..699);
+                            let a = self.rng.gen_range(100..999);
+                            let b = self.rng.gen_range(100..999);
+                            Ok(format!("+34{:03}{:03}{:03}", prefix, a, b))
+                        } else {
+                            // Landline
+                            let area = self.rng.gen_range(91..98);
+                            let a = self.rng.gen_range(100..999);
+                            let b = self.rng.gen_range(10..99);
+                            let c = self.rng.gen_range(10..99);
+                            Ok(format!("+34{:02}{:03}{:02}{:02}", area, a, b, c))
+                        }
+                    }
+                    6 => {
+                        // JP: +81 90 XXXX XXXX (mobile) or +81 3 XXXX XXXX (Tokyo)
+                        if self.rng.gen_bool(0.6) {
+                            let prefix = [70, 80, 90][self.rng.gen_range(0..3)];
+                            let a = self.rng.gen_range(1000..9999);
+                            let b = self.rng.gen_range(1000..9999);
+                            Ok(format!("+81{}{:04}{:04}", prefix, a, b))
+                        } else {
+                            let a = self.rng.gen_range(1000..9999);
+                            let b = self.rng.gen_range(1000..9999);
+                            Ok(format!("+813{:04}{:04}", a, b))
+                        }
+                    }
+                    _ => {
+                        // IN: +91 9XXX XXX XXX (mobile)
+                        let prefix = self.rng.gen_range(7000..9999);
+                        let a = self.rng.gen_range(100..999);
+                        let b = self.rng.gen_range(100..999);
+                        Ok(format!("+91{:04}{:03}{:03}", prefix, a, b))
+                    }
+                }
             }
             ("person", "username") => {
                 let first = self.random_first_name().to_lowercase();
@@ -1739,5 +1840,56 @@ test.test.test:
         assert!(saw_mc, "Should generate Mastercard cards");
         assert!(saw_amex, "Should generate Amex cards");
         assert!(saw_discover, "Should generate Discover cards");
+    }
+
+    #[test]
+    fn test_phone_number_valid() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        let mut valid_count = 0;
+        let total = 200;
+        for _ in 0..total {
+            let val = gen.generate_value("identity.person.phone_number").unwrap();
+            // All generated numbers should start with +
+            assert!(val.starts_with('+'), "Phone number should start with +: {}", val);
+            // Parse with phonenumber crate (None = auto-detect country from + prefix)
+            if let Ok(number) = phonenumber::parse(None, &val) {
+                if phonenumber::is_valid(&number) {
+                    valid_count += 1;
+                }
+            }
+        }
+        // At least 80% should pass strict validation (some edge cases may fail)
+        let valid_pct = valid_count as f64 / total as f64 * 100.0;
+        assert!(
+            valid_pct >= 80.0,
+            "Only {:.0}% of phone numbers passed validation ({}/{})",
+            valid_pct, valid_count, total
+        );
+    }
+
+    #[test]
+    fn test_phone_number_country_diversity() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        let mut saw_us = false;
+        let mut saw_gb = false;
+        let mut saw_au = false;
+        let mut saw_de = false;
+        let mut saw_fr = false;
+        let mut saw_es = false;
+        for _ in 0..200 {
+            let val = gen.generate_value("identity.person.phone_number").unwrap();
+            if val.starts_with("+1") { saw_us = true; }
+            if val.starts_with("+44") { saw_gb = true; }
+            if val.starts_with("+61") { saw_au = true; }
+            if val.starts_with("+49") { saw_de = true; }
+            if val.starts_with("+33") { saw_fr = true; }
+            if val.starts_with("+34") { saw_es = true; }
+        }
+        assert!(saw_us, "Should generate US numbers");
+        assert!(saw_gb, "Should generate GB numbers");
+        assert!(saw_au, "Should generate AU numbers");
+        assert!(saw_de, "Should generate DE numbers");
+        assert!(saw_fr, "Should generate FR numbers");
+        assert!(saw_es, "Should generate ES numbers");
     }
 }

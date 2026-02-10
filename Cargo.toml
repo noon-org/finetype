@@ -37,6 +37,7 @@ sha2 = "0.10"
 md-5 = "0.10"
 glob = "0.3"
 luhn = "1.0"
+phonenumber = "0.3"
 regex = "1.10"
 
 # CLI
