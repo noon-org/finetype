@@ -570,6 +570,39 @@ fn post_process(result: &mut ClassificationResult, text: &str) {
             }
         }
     }
+
+    // Rule 6: email rescue
+    //
+    // The `@` sign is a definitive format signal for email addresses. The model sometimes
+    // misclassifies emails with short/uncommon domains as hostname, username, or slug.
+    // Only applies to specific confusion labels (not container types, CSV, JSON, etc.).
+    // The text must look like a standalone email, not a substring within structured data.
+    if result.label == "technology.internet.hostname"
+        || result.label == "identity.person.username"
+        || result.label == "technology.internet.slug"
+    {
+        let trimmed = text.trim();
+        if let Some(at_pos) = trimmed.find('@') {
+            let local = &trimmed[..at_pos];
+            let domain = &trimmed[at_pos + 1..];
+            // Strict email check: standalone email, not embedded in structured data
+            let looks_like_email = !local.is_empty()
+                && !domain.is_empty()
+                && domain.contains('.')
+                && trimmed.find('@') == trimmed.rfind('@') // exactly one @
+                && !trimmed.contains(' ')
+                && !trimmed.contains("://")
+                && !trimmed.contains(',')
+                && !trimmed.contains('=')
+                && !trimmed.contains('&')
+                && !trimmed.contains('{')
+                && !trimmed.contains('|')
+                && !trimmed.contains(';');
+            if looks_like_email {
+                result.label = "identity.person.email".to_string();
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -828,5 +861,66 @@ mod post_process_tests {
         let mut result = make_result("geography.coordinate.latitude");
         post_process(&mut result, "90.001");
         assert_eq!(result.label, "geography.coordinate.longitude");
+    }
+
+    // ── Rule 6: email rescue ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_email_rescues_from_hostname() {
+        let mut result = make_result("technology.internet.hostname");
+        post_process(&mut result, "bob@demo.net");
+        assert_eq!(result.label, "identity.person.email");
+    }
+
+    #[test]
+    fn test_email_rescues_from_username() {
+        let mut result = make_result("identity.person.username");
+        post_process(&mut result, "info@startup.co");
+        assert_eq!(result.label, "identity.person.email");
+    }
+
+    #[test]
+    fn test_email_rescues_from_slug() {
+        let mut result = make_result("technology.internet.slug");
+        post_process(&mut result, "hello@world.org");
+        assert_eq!(result.label, "identity.person.email");
+    }
+
+    #[test]
+    fn test_correct_email_unchanged() {
+        let mut result = make_result("identity.person.email");
+        post_process(&mut result, "alice@gmail.com");
+        assert_eq!(result.label, "identity.person.email");
+    }
+
+    #[test]
+    fn test_paypal_email_not_overridden() {
+        let mut result = make_result("identity.payment.paypal_email");
+        post_process(&mut result, "user@paypal.com");
+        assert_eq!(result.label, "identity.payment.paypal_email");
+    }
+
+    #[test]
+    fn test_non_email_hostname_unchanged() {
+        // A plain hostname without @ should not become email
+        let mut result = make_result("technology.internet.hostname");
+        post_process(&mut result, "www.example.com");
+        assert_eq!(result.label, "technology.internet.hostname");
+    }
+
+    #[test]
+    fn test_url_with_at_not_email() {
+        // URL with @ (e.g., basic auth) has :// so should not become email
+        let mut result = make_result("technology.internet.url");
+        post_process(&mut result, "https://user@host.com/path");
+        assert_eq!(result.label, "technology.internet.url");
+    }
+
+    #[test]
+    fn test_at_without_dot_not_email() {
+        // @ without a dot in domain is not a valid email
+        let mut result = make_result("identity.person.username");
+        post_process(&mut result, "user@localhost");
+        assert_eq!(result.label, "identity.person.username");
     }
 }
