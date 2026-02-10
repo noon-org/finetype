@@ -389,6 +389,9 @@ geography.coordinate.latitude:
   notes: >
     v1 migration: Was address.latitude. Decimal degrees format.
     Range: -90 (South Pole) to +90 (North Pole).
+    COLUMN_MODE_DISAMBIGUATION_TARGET: latitude vs longitude.
+    Single-value ambiguous when |value| <= 90 (overlapping range).
+    Column-mode: if all values in [-90, 90] → latitude; if any |value| > 90 → longitude.
 
 geography.coordinate.longitude:
   title: "Longitude"
@@ -418,6 +421,8 @@ geography.coordinate.longitude:
   notes: >
     v1 migration: Was address.longitude. Decimal degrees format.
     Range: -180 (West) to +180 (East).
+    COLUMN_MODE_DISAMBIGUATION_TARGET: latitude vs longitude.
+    Column-mode: if any |value| > 90 → longitude (latitude max is 90).
 
 geography.coordinate.coordinates:
   title: "Coordinate Pair (Lat, Lon)"

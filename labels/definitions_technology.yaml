@@ -462,7 +462,9 @@ technology.cryptographic.token_hex:
   title: "Hexadecimal Token"
   description: >
     Random token as hex string (e.g., secure session tokens).
-    Similar to cryptographic hash but usually shorter and not deterministic.
+    Distinguished from cryptographic hashes by variable length that does NOT
+    match standard hash lengths (32=MD5, 40=SHA1, 64=SHA256, 128=SHA512).
+    Tokens are typically 16-48 hex chars at non-standard lengths.
   designation: universal
   locales: [UNIVERSAL]
   broad_type: VARCHAR
@@ -472,18 +474,20 @@ technology.cryptographic.token_hex:
   decompose: null
   validation:
     type: string
-    pattern: "^[0-9a-f]{16,64}$"
+    pattern: "^[0-9a-f]{16,48}$"
   tier: [VARCHAR, cryptographic]
   release_priority: 3
   aliases: [hex_token]
   samples:
-    - "a1b2c3d4e5f6"
-    - "1234567890abcdef"
-    - "deadbeefcafebabe"
+    - "a1b2c3d4e5f67890ab"
+    - "1234567890abcdef1234"
+    - "deadbeefcafebabe00ff11"
   references: null
   notes: >
-    v1 migration: Was cryptographic.token_hex. Typically 16-64 hex characters
-    (8-32 bytes). Used for session IDs, API tokens, etc.
+    v1 migration: Was cryptographic.token_hex. Typically 16-48 hex characters
+    (8-24 bytes). Used for session IDs, API tokens, etc. Distinguished from
+    hashes by avoiding standard hash lengths: 32 (MD5), 40 (SHA1), 64 (SHA256),
+    128 (SHA512). Generator produces lengths that exclude these values.
 
 technology.cryptographic.token_urlsafe:
   title: "URL-Safe Base64 Token"

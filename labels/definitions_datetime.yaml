@@ -166,32 +166,40 @@ datetime.timestamp.rfc_2822:
   notes: null
 
 datetime.timestamp.rfc_3339:
-  title: RFC 3339
+  title: RFC 3339 (Space Separator)
   description: >
-    Internet datetime format, a profile of ISO 8601. Used in Atom feeds,
-    JSON APIs, and modern web services.
+    Internet datetime format, a profile of ISO 8601 that allows a space
+    separator between date and time (RFC 3339 §5.6). Used in Atom feeds,
+    JSON APIs, and modern web services. Distinguished from iso_8601_offset
+    by the space separator: RFC 3339 uses space, ISO 8601 requires T.
+    Disambiguation: Tier 2 timestamp model detects T vs space.
   designation: universal
   locales: [UNIVERSAL]
   broad_type: TIMESTAMPTZ
-  format_string: "%Y-%m-%dT%H:%M:%S%:z"
-  transform: "strptime({col}, '%Y-%m-%dT%H:%M:%S%:z')"
+  format_string: "%Y-%m-%d %H:%M:%S%:z"
+  transform: "strptime({col}, '%Y-%m-%d %H:%M:%S%:z')"
   transform_ext: null
   decompose: null
   validation:
     type: string
-    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{2}:\\d{2}$"
+    pattern: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}[+-]\\d{2}:\\d{2}$"
   tier: [TIMESTAMPTZ, timestamp]
   release_priority: 5
   aliases: []
   samples:
-    - "2024-01-15T10:30:00+00:00"
-    - "2019-12-31T23:59:59-05:00"
-    - "2023-06-01T12:00:00+09:00"
+    - "2024-01-15 10:30:00+00:00"
+    - "2019-12-31 23:59:59-05:00"
+    - "2023-06-01 12:00:00+09:00"
   references:
     - title: "RFC 3339 - Date and Time on the Internet"
       link: "https://www.rfc-editor.org/rfc/rfc3339"
   notes: >
-    RFC 3339 format: date T time offset with no space before offset.
+    RFC 3339 §5.6 allows both T and space as date/time separator.
+    For classification purposes, space-separated = rfc_3339,
+    T-separated = iso_8601_offset. This enables Tier 2 disambiguation
+    via a simple character check. Transform uses CASE to handle both:
+    CASE WHEN {col} LIKE '%T%' THEN strptime({col}, '%Y-%m-%dT%H:%M:%S%:z')
+    ELSE strptime({col}, '%Y-%m-%d %H:%M:%S%:z') END
 
 datetime.timestamp.sql_standard:
   title: SQL Standard
@@ -497,7 +505,10 @@ datetime.date.short_dmy:
     - "15-01-24"
     - "31-12-99"
   references: null
-  notes: null
+  notes: >
+    Ambiguous with short_mdy in single-value mode (same regex pattern).
+    Column-mode disambiguation: if any value has first component > 12, it's DMY.
+    COLUMN_MODE_DISAMBIGUATION_TARGET: short_dmy vs short_mdy
 
 datetime.date.short_mdy:
   title: Short Date (Month-Day-Year, 2-digit year)
@@ -522,7 +533,9 @@ datetime.date.short_mdy:
     - "01-15-24"
     - "12-31-99"
   references: null
-  notes: "Same regex as short_dmy — requires column-mode inference to disambiguate."
+  notes: >
+    Same regex as short_dmy — requires column-mode inference to disambiguate.
+    COLUMN_MODE_DISAMBIGUATION_TARGET: short_dmy vs short_mdy
 
 datetime.date.short_ymd:
   title: Short Date (Year-Month-Day, 2-digit year)
@@ -598,7 +611,9 @@ datetime.date.compact_dmy:
     - "15012024"
     - "31122019"
   references: null
-  notes: "v1 name: date.numeric_dmy. Same regex as compact_ymd — requires column-mode inference."
+  notes: >
+    v1 name: date.numeric_dmy. Same regex as compact_ymd/compact_mdy.
+    COLUMN_MODE_DISAMBIGUATION_TARGET: compact_dmy vs compact_mdy vs compact_ymd
 
 datetime.date.compact_mdy:
   title: Compact Date (MMDDYYYY)
@@ -623,7 +638,9 @@ datetime.date.compact_mdy:
     - "01152024"
     - "12312019"
   references: null
-  notes: "v1 name: date.numeric_mdy. Same regex as compact_ymd — requires column-mode inference."
+  notes: >
+    v1 name: date.numeric_mdy. Same regex as compact_ymd/compact_dmy.
+    COLUMN_MODE_DISAMBIGUATION_TARGET: compact_dmy vs compact_mdy vs compact_ymd
 
 datetime.date.abbreviated_month:
   title: Abbreviated Month Date

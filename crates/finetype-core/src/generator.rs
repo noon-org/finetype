@@ -137,9 +137,10 @@ impl Generator {
                 Ok(format!("{}{} {} +0000", day, ord, dt.format("%b %Y %H:%M:%S")))
             }
             ("timestamp", "rfc_3339") => {
+                // RFC 3339 uses SPACE separator (vs ISO 8601 which uses T)
                 let dt = self.random_datetime();
                 let offset_h = self.rng.gen_range(-12i32..=12);
-                Ok(format!("{}{:+03}:00", dt.format("%Y-%m-%dT%H:%M:%S"), offset_h))
+                Ok(format!("{}{:+03}:00", dt.format("%Y-%m-%d %H:%M:%S"), offset_h))
             }
             ("timestamp", "american") => {
                 Ok(self.random_datetime().format("%m/%d/%Y %I:%M %p").to_string())
@@ -401,7 +402,13 @@ impl Generator {
                 Ok(self.gen_hex_string(len))
             }
             ("cryptographic", "token_hex") => {
-                let len = self.rng.gen_range(16..48);
+                // Generate hex tokens at lengths that DON'T match standard hash sizes
+                // Avoid: 32 (MD5), 40 (SHA1), 64 (SHA256), 128 (SHA512)
+                let hash_lengths = [32, 40, 64];
+                let mut len = self.rng.gen_range(16..48);
+                while hash_lengths.contains(&len) {
+                    len = self.rng.gen_range(16..48);
+                }
                 Ok(self.gen_hex_string(len))
             }
             ("cryptographic", "token_urlsafe") => {
@@ -425,13 +432,53 @@ impl Generator {
                 Ok(format!("{}-{}-{:05}-{:03}-{}", prefix, group, publisher, title, check))
             }
             ("code", "imei") => {
-                Ok(format!("{:015}", self.rng.gen_range(100_000_000_000_000u64..999_999_999_999_999)))
+                // Generate Luhn-valid 15-digit IMEI with realistic TAC prefixes
+                // TAC = Type Allocation Code (8 digits identifying manufacturer/model)
+                let tacs = [
+                    "35332509", "35391109", "35404909", "35648409", // Apple
+                    "35290611", "35397710", "35466210", "35195410", // Samsung
+                    "35816110", "35837910", "35455610", "35260810", // Google
+                    "86109003", "86637303", "86813603", "86930804", // Huawei
+                    "86876103", "35780008", "35928509", "35455307", // OnePlus/Sony/LG
+                ];
+                let tac = tacs[self.rng.gen_range(0..tacs.len())];
+                // 6 random serial digits
+                let serial: String = (0..6)
+                    .map(|_| (b'0' + self.rng.gen_range(0..10)) as char)
+                    .collect();
+                let partial = format!("{}{}", tac, serial); // 14 digits
+                let check = self.luhn_check_digit(&partial);
+                Ok(format!("{}{}", partial, check))
             }
             ("code", "ean") => {
                 if self.rng.gen_bool(0.7) {
-                    Ok(format!("{:013}", self.rng.gen_range(1_000_000_000_000u64..9_999_999_999_999)))
+                    // EAN-13 with realistic GS1 country prefixes
+                    let gs1_prefixes = [
+                        "000", "001", "030", "040", // US/Canada
+                        "300", "310", "350", "370", // France
+                        "400", "410", "420", "440", // Germany
+                        "450", "459",               // Japan
+                        "500", "509",               // UK
+                        "690", "694", "699",        // China
+                        "880",                      // South Korea
+                        "890",                      // India
+                        "930", "940",               // Australia
+                    ];
+                    let prefix = gs1_prefixes[self.rng.gen_range(0..gs1_prefixes.len())];
+                    let remaining = 12 - prefix.len();
+                    let body: String = (0..remaining)
+                        .map(|_| (b'0' + self.rng.gen_range(0..10)) as char)
+                        .collect();
+                    let partial = format!("{}{}", prefix, body);
+                    let check = self.ean_check_digit(&partial);
+                    Ok(format!("{}{}", partial, check))
                 } else {
-                    Ok(format!("{:08}", self.rng.gen_range(10_000_000u64..99_999_999)))
+                    // EAN-8: 7 digits + check digit
+                    let body: String = (0..7)
+                        .map(|_| (b'0' + self.rng.gen_range(0..10)) as char)
+                        .collect();
+                    let check = self.ean_check_digit(&body);
+                    Ok(format!("{}{}", body, check))
                 }
             }
             ("code", "issn") => {
@@ -663,14 +710,34 @@ impl Generator {
             }
             // ── payment (7 types) ────────────────────────────────────────
             ("payment", "credit_card_number") => {
-                // Generate valid-looking card numbers (Luhn not enforced, pattern only)
-                let prefixes = ["4", "51", "52", "53", "54", "55", "34", "37"];
-                let prefix = prefixes[self.rng.gen_range(0..prefixes.len())];
-                let remaining = 16 - prefix.len();
-                let suffix: String = (0..remaining)
+                // Generate Luhn-valid card numbers with correct IIN prefixes per network
+                let (prefix, total_len) = match self.rng.gen_range(0u8..4) {
+                    0 => {
+                        // Visa: starts with 4, 16 digits
+                        ("4".to_string(), 16)
+                    }
+                    1 => {
+                        // Mastercard: starts with 51-55, 16 digits
+                        let mc = self.rng.gen_range(51..=55);
+                        (mc.to_string(), 16)
+                    }
+                    2 => {
+                        // Amex: starts with 34 or 37, 15 digits
+                        let amex = if self.rng.gen_bool(0.5) { "34" } else { "37" };
+                        (amex.to_string(), 15)
+                    }
+                    _ => {
+                        // Discover: starts with 6011, 16 digits
+                        ("6011".to_string(), 16)
+                    }
+                };
+                let random_digits = total_len - prefix.len() - 1; // -1 for check digit
+                let body: String = (0..random_digits)
                     .map(|_| (b'0' + self.rng.gen_range(0..10)) as char)
                     .collect();
-                Ok(format!("{}{}", prefix, suffix))
+                let partial = format!("{}{}", prefix, body);
+                let check = self.luhn_check_digit(&partial);
+                Ok(format!("{}{}", partial, check))
             }
             ("payment", "credit_card_expiration_date") => {
                 let month = self.rng.gen_range(1..13);
@@ -1258,6 +1325,41 @@ impl Generator {
     // SHARED HELPERS
     // ═══════════════════════════════════════════════════════════════════════════
 
+    /// Compute Luhn check digit for a string of digits.
+    /// Returns the single digit (0-9) that, when appended, makes the number Luhn-valid.
+    fn luhn_check_digit(&self, digits: &str) -> u8 {
+        let sum: u32 = digits
+            .bytes()
+            .rev()
+            .enumerate()
+            .map(|(i, b)| {
+                let mut d = (b - b'0') as u32;
+                if i % 2 == 0 {
+                    d *= 2;
+                    if d > 9 {
+                        d -= 9;
+                    }
+                }
+                d
+            })
+            .sum();
+        ((10 - (sum % 10)) % 10) as u8
+    }
+
+    /// Compute EAN check digit (weighted sum with alternating weights 1 and 3).
+    /// Works for both EAN-13 (12 input digits) and EAN-8 (7 input digits).
+    fn ean_check_digit(&self, digits: &str) -> u8 {
+        let sum: u32 = digits
+            .bytes()
+            .enumerate()
+            .map(|(i, b)| {
+                let d = (b - b'0') as u32;
+                if i % 2 == 0 { d } else { d * 3 }
+            })
+            .sum();
+        ((10 - (sum % 10)) % 10) as u8
+    }
+
     fn random_datetime(&mut self) -> NaiveDateTime {
         let year = self.rng.gen_range(2015..2030);
         let month = self.rng.gen_range(1..=12);
@@ -1445,5 +1547,101 @@ test.test.test:
     fn test_unknown_label_returns_error() {
         let mut gen = Generator::with_seed(test_taxonomy(), 42);
         assert!(gen.generate_value("nonexistent.type.foo").is_err());
+    }
+
+    #[test]
+    fn test_credit_card_luhn_valid() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        for _ in 0..100 {
+            let val = gen.generate_value("identity.payment.credit_card_number").unwrap();
+            // Verify Luhn validity
+            assert!(
+                luhn::valid(&val),
+                "Credit card number {} failed Luhn check",
+                val
+            );
+            // Verify correct lengths
+            assert!(
+                val.len() == 15 || val.len() == 16,
+                "Credit card length {} unexpected for {}",
+                val.len(),
+                val
+            );
+            // Verify correct prefixes
+            let first = val.chars().next().unwrap();
+            assert!(
+                matches!(first, '3' | '4' | '5' | '6'),
+                "Unexpected credit card prefix: {}",
+                val
+            );
+        }
+    }
+
+    #[test]
+    fn test_imei_luhn_valid() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        for _ in 0..100 {
+            let val = gen.generate_value("technology.code.imei").unwrap();
+            assert_eq!(val.len(), 15, "IMEI should be 15 digits: {}", val);
+            assert!(
+                luhn::valid(&val),
+                "IMEI {} failed Luhn check",
+                val
+            );
+        }
+    }
+
+    #[test]
+    fn test_ean_check_digit_valid() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        for _ in 0..100 {
+            let val = gen.generate_value("technology.code.ean").unwrap();
+            assert!(
+                val.len() == 8 || val.len() == 13,
+                "EAN length {} unexpected for {}",
+                val.len(),
+                val
+            );
+            // Verify EAN check digit
+            let (body, check_str) = val.split_at(val.len() - 1);
+            let expected_check = {
+                let sum: u32 = body
+                    .bytes()
+                    .enumerate()
+                    .map(|(i, b)| {
+                        let d = (b - b'0') as u32;
+                        if i % 2 == 0 { d } else { d * 3 }
+                    })
+                    .sum();
+                ((10 - (sum % 10)) % 10) as u8
+            };
+            let actual_check = check_str.bytes().next().unwrap() - b'0';
+            assert_eq!(
+                actual_check, expected_check,
+                "EAN {} has invalid check digit (expected {}, got {})",
+                val, expected_check, actual_check
+            );
+        }
+    }
+
+    #[test]
+    fn test_credit_card_network_prefixes() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        let mut saw_visa = false;
+        let mut saw_mc = false;
+        let mut saw_amex = false;
+        let mut saw_discover = false;
+        for _ in 0..200 {
+            let val = gen.generate_value("identity.payment.credit_card_number").unwrap();
+            if val.starts_with('4') && val.len() == 16 { saw_visa = true; }
+            if val.starts_with("51") || val.starts_with("52") || val.starts_with("53")
+                || val.starts_with("54") || val.starts_with("55") { saw_mc = true; }
+            if val.starts_with("34") || val.starts_with("37") { saw_amex = true; }
+            if val.starts_with("6011") { saw_discover = true; }
+        }
+        assert!(saw_visa, "Should generate Visa cards");
+        assert!(saw_mc, "Should generate Mastercard cards");
+        assert!(saw_amex, "Should generate Amex cards");
+        assert!(saw_discover, "Should generate Discover cards");
     }
 }
