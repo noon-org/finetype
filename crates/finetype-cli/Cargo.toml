@@ -19,6 +19,7 @@ metal = ["finetype-model/metal"]
 finetype-core = { workspace = true }
 finetype-model = { workspace = true }
 clap = { workspace = true }
+csv = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }

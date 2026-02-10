@@ -201,6 +201,29 @@ enum Commands {
         cleaned_file: PathBuf,
     },
 
+    /// Profile a CSV file — detect column types using column-mode inference
+    Profile {
+        /// Input CSV file
+        #[arg(short, long)]
+        file: PathBuf,
+
+        /// Model directory
+        #[arg(short, long, default_value = "models/default")]
+        model: PathBuf,
+
+        /// Output format (plain, json, csv)
+        #[arg(short, long, default_value = "plain")]
+        output: OutputFormat,
+
+        /// Maximum values to sample per column (default 100)
+        #[arg(long, default_value = "100")]
+        sample_size: usize,
+
+        /// CSV delimiter character (default: auto-detect)
+        #[arg(long)]
+        delimiter: Option<char>,
+    },
+
     /// Evaluate model accuracy on a test set
     Eval {
         /// Test data file (NDJSON with "text" and "classification" fields)
@@ -360,6 +383,14 @@ fn main() -> Result<()> {
             quarantine_file,
             cleaned_file,
         ),
+
+        Commands::Profile {
+            file,
+            model,
+            output,
+            sample_size,
+            delimiter,
+        } => cmd_profile(file, model, output, sample_size, delimiter),
 
         Commands::Eval {
             data,
@@ -1273,6 +1304,205 @@ fn cmd_validate(
     // Exit code: 0 = all valid, 1 = some invalid
     if any_invalid {
         std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROFILE — Detect column types in a CSV file
+// ═══════════════════════════════════════════════════════════════════════════════
+
+fn cmd_profile(
+    file: PathBuf,
+    model: PathBuf,
+    output: OutputFormat,
+    sample_size: usize,
+    delimiter: Option<char>,
+) -> Result<()> {
+    use finetype_model::{CharClassifier, ColumnClassifier, ColumnConfig};
+
+    eprintln!("Loading model from {:?}", model);
+    let classifier = CharClassifier::load(&model)?;
+
+    let config = ColumnConfig {
+        sample_size,
+        ..Default::default()
+    };
+    let column_classifier = ColumnClassifier::new(classifier, config);
+
+    eprintln!("Reading {:?}", file);
+
+    // Build CSV reader with optional delimiter
+    let mut reader_builder = csv::ReaderBuilder::new();
+    reader_builder.flexible(true);
+    if let Some(delim) = delimiter {
+        reader_builder.delimiter(delim as u8);
+    }
+    let mut reader = reader_builder.from_path(&file)?;
+
+    // Get headers
+    let headers: Vec<String> = reader.headers()?.iter().map(|h| h.to_string()).collect();
+
+    let n_cols = headers.len();
+    eprintln!("Found {} columns: {:?}", n_cols, headers);
+
+    // Collect column values
+    let mut columns: Vec<Vec<String>> = vec![Vec::new(); n_cols];
+    let mut row_count = 0;
+
+    for result in reader.records() {
+        let record = result?;
+        row_count += 1;
+        for (i, field) in record.iter().enumerate() {
+            if i < n_cols {
+                let trimmed = field.trim();
+                // Skip empty, NULL, NA, N/A values
+                if !trimmed.is_empty()
+                    && trimmed != "NULL"
+                    && trimmed != "null"
+                    && trimmed != "NA"
+                    && trimmed != "N/A"
+                    && trimmed != "nan"
+                    && trimmed != "NaN"
+                    && trimmed != "None"
+                {
+                    columns[i].push(trimmed.to_string());
+                }
+            }
+        }
+    }
+
+    eprintln!("Read {} rows", row_count);
+
+    // Profile each column
+    struct ColProfile {
+        name: String,
+        label: String,
+        confidence: f32,
+        samples_used: usize,
+        non_null_count: usize,
+        null_count: usize,
+        disambiguation_applied: bool,
+        disambiguation_rule: Option<String>,
+    }
+
+    let mut profiles: Vec<ColProfile> = Vec::new();
+
+    for (i, col_values) in columns.iter().enumerate() {
+        let name = headers
+            .get(i)
+            .cloned()
+            .unwrap_or_else(|| format!("col_{}", i));
+        let null_count = row_count - col_values.len();
+
+        if col_values.is_empty() {
+            profiles.push(ColProfile {
+                name,
+                label: "unknown".to_string(),
+                confidence: 0.0,
+                samples_used: 0,
+                non_null_count: 0,
+                null_count,
+                disambiguation_applied: false,
+                disambiguation_rule: None,
+            });
+            continue;
+        }
+
+        let result = column_classifier.classify_column(col_values)?;
+
+        profiles.push(ColProfile {
+            name,
+            label: result.label,
+            confidence: result.confidence,
+            samples_used: result.samples_used,
+            non_null_count: col_values.len(),
+            null_count,
+            disambiguation_applied: result.disambiguation_applied,
+            disambiguation_rule: result.disambiguation_rule,
+        });
+    }
+
+    // Output results
+    match output {
+        OutputFormat::Plain => {
+            println!(
+                "FineType Column Profile — {:?} ({} rows, {} columns)",
+                file, row_count, n_cols
+            );
+            println!("{}", "═".repeat(80));
+            println!();
+            println!("  {:<25} {:<45} {:>6}", "COLUMN", "TYPE", "CONF");
+            println!("  {}", "─".repeat(78));
+
+            for p in &profiles {
+                let conf_str = if p.non_null_count > 0 {
+                    format!("{:.1}%", p.confidence * 100.0)
+                } else {
+                    "—".to_string()
+                };
+                let disambig = if p.disambiguation_applied {
+                    format!(" [{}]", p.disambiguation_rule.as_deref().unwrap_or("rule"))
+                } else {
+                    String::new()
+                };
+                println!(
+                    "  {:<25} {:<45} {:>6}{}",
+                    p.name, p.label, conf_str, disambig
+                );
+            }
+
+            println!();
+            let typed_cols = profiles.iter().filter(|p| p.label != "unknown").count();
+            println!(
+                "{}/{} columns typed, {} rows analyzed",
+                typed_cols, n_cols, row_count
+            );
+        }
+        OutputFormat::Json => {
+            let cols: Vec<serde_json::Value> = profiles
+                .iter()
+                .map(|p| {
+                    let mut obj = serde_json::Map::new();
+                    obj.insert("column".to_string(), json!(p.name));
+                    obj.insert("type".to_string(), json!(p.label));
+                    obj.insert("confidence".to_string(), json!(p.confidence));
+                    obj.insert("samples_used".to_string(), json!(p.samples_used));
+                    obj.insert("non_null".to_string(), json!(p.non_null_count));
+                    obj.insert("null".to_string(), json!(p.null_count));
+                    if p.disambiguation_applied {
+                        obj.insert("disambiguation_applied".to_string(), json!(true));
+                        if let Some(rule) = &p.disambiguation_rule {
+                            obj.insert("disambiguation_rule".to_string(), json!(rule));
+                        }
+                    }
+                    serde_json::Value::Object(obj)
+                })
+                .collect();
+
+            let result = json!({
+                "file": file.to_string_lossy(),
+                "rows": row_count,
+                "columns": cols,
+            });
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        OutputFormat::Csv => {
+            println!("column,type,confidence,samples_used,non_null,null,disambiguation");
+            for p in &profiles {
+                println!(
+                    "\"{}\",\"{}\",{:.4},{},{},{},\"{}\"",
+                    p.name,
+                    p.label,
+                    p.confidence,
+                    p.samples_used,
+                    p.non_null_count,
+                    p.null_count,
+                    p.disambiguation_rule.as_deref().unwrap_or("")
+                );
+            }
+        }
     }
 
     Ok(())
