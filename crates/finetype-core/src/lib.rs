@@ -11,8 +11,14 @@ pub mod checker;
 pub mod generator;
 pub mod taxonomy;
 pub mod tokenizer;
+pub mod validator;
 
 pub use checker::{format_report, CheckReport, Checker};
 pub use generator::{Generator, Sample};
 pub use taxonomy::{Definition, Designation, Label, Taxonomy, TierGraph, TierGraphSummary};
 pub use tokenizer::Tokenizer;
+pub use validator::{
+    validate_column, validate_column_for_label, validate_value, validate_value_for_label,
+    ColumnStats, ColumnValidationResult, InvalidStrategy, QuarantinedValue, ValidationCheck,
+    ValidationError, ValidationResult, ValidatorError,
+};
