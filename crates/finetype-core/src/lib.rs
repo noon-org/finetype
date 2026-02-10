@@ -7,12 +7,12 @@
 //! - `checker` — taxonomy ↔ generator alignment validation
 //! - `tokenizer` — text tokenization for model training
 
-pub mod taxonomy;
-pub mod generator;
 pub mod checker;
+pub mod generator;
+pub mod taxonomy;
 pub mod tokenizer;
 
-pub use taxonomy::{Definition, Designation, Label, Taxonomy};
+pub use checker::{format_report, CheckReport, Checker};
 pub use generator::{Generator, Sample};
-pub use checker::{CheckReport, Checker, format_report};
+pub use taxonomy::{Definition, Designation, Label, Taxonomy};
 pub use tokenizer::Tokenizer;

@@ -99,16 +99,13 @@ impl Generator {
     // DOMAIN: datetime (46 types)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    fn gen_datetime(
-        &mut self,
-        category: &str,
-        type_name: &str,
-    ) -> Result<String, GeneratorError> {
+    fn gen_datetime(&mut self, category: &str, type_name: &str) -> Result<String, GeneratorError> {
         match (category, type_name) {
             // ── timestamp (12 types) ─────────────────────────────────────
-            ("timestamp", "iso_8601") => {
-                Ok(self.random_datetime().format("%Y-%m-%dT%H:%M:%SZ").to_string())
-            }
+            ("timestamp", "iso_8601") => Ok(self
+                .random_datetime()
+                .format("%Y-%m-%dT%H:%M:%SZ")
+                .to_string()),
             ("timestamp", "iso_8601_compact") => {
                 Ok(self.random_datetime().format("%Y%m%dT%H%M%S").to_string())
             }
@@ -120,11 +117,16 @@ impl Generator {
             ("timestamp", "iso_8601_offset") => {
                 let dt = self.random_datetime();
                 let offset_h = self.rng.gen_range(-12i32..=12);
-                Ok(format!("{}{:+03}:00", dt.format("%Y-%m-%dT%H:%M:%S"), offset_h))
+                Ok(format!(
+                    "{}{:+03}:00",
+                    dt.format("%Y-%m-%dT%H:%M:%S"),
+                    offset_h
+                ))
             }
-            ("timestamp", "rfc_2822") => {
-                Ok(self.random_datetime().format("%a, %d %b %Y %H:%M:%S +0000").to_string())
-            }
+            ("timestamp", "rfc_2822") => Ok(self
+                .random_datetime()
+                .format("%a, %d %b %Y %H:%M:%S +0000")
+                .to_string()),
             ("timestamp", "rfc_2822_ordinal") => {
                 let dt = self.random_datetime();
                 let day = dt.day();
@@ -134,20 +136,31 @@ impl Generator {
                     3 if day != 13 => "rd",
                     _ => "th",
                 };
-                Ok(format!("{}{} {} +0000", day, ord, dt.format("%b %Y %H:%M:%S")))
+                Ok(format!(
+                    "{}{} {} +0000",
+                    day,
+                    ord,
+                    dt.format("%b %Y %H:%M:%S")
+                ))
             }
             ("timestamp", "rfc_3339") => {
                 // RFC 3339 uses SPACE separator (vs ISO 8601 which uses T)
                 let dt = self.random_datetime();
                 let offset_h = self.rng.gen_range(-12i32..=12);
-                Ok(format!("{}{:+03}:00", dt.format("%Y-%m-%d %H:%M:%S"), offset_h))
+                Ok(format!(
+                    "{}{:+03}:00",
+                    dt.format("%Y-%m-%d %H:%M:%S"),
+                    offset_h
+                ))
             }
-            ("timestamp", "american") => {
-                Ok(self.random_datetime().format("%m/%d/%Y %I:%M %p").to_string())
-            }
-            ("timestamp", "american_24h") => {
-                Ok(self.random_datetime().format("%m/%d/%Y %H:%M:%S").to_string())
-            }
+            ("timestamp", "american") => Ok(self
+                .random_datetime()
+                .format("%m/%d/%Y %I:%M %p")
+                .to_string()),
+            ("timestamp", "american_24h") => Ok(self
+                .random_datetime()
+                .format("%m/%d/%Y %H:%M:%S")
+                .to_string()),
             ("timestamp", "european") => {
                 Ok(self.random_datetime().format("%d/%m/%Y %H:%M").to_string())
             }
@@ -156,9 +169,10 @@ impl Generator {
                 let micros = self.rng.gen_range(0..1000000);
                 Ok(format!("{}.{:06}", dt.format("%Y-%m-%dT%H:%M:%S"), micros))
             }
-            ("timestamp", "sql_standard") => {
-                Ok(self.random_datetime().format("%Y-%m-%d %H:%M:%S").to_string())
-            }
+            ("timestamp", "sql_standard") => Ok(self
+                .random_datetime()
+                .format("%Y-%m-%d %H:%M:%S")
+                .to_string()),
 
             // ── date (17 types) ──────────────────────────────────────────
             ("date", "iso") => Ok(self.random_datetime().format("%Y-%m-%d").to_string()),
@@ -192,15 +206,21 @@ impl Generator {
             ("date", "weekday_full_month") => {
                 Ok(self.random_datetime().format("%A, %d %B %Y").to_string())
             }
-            ("date", "ordinal") => {
-                Ok(format!("{}-{:03}", self.rng.gen_range(2020..2030), self.rng.gen_range(1..366)))
-            }
-            ("date", "julian") => {
-                Ok(format!("{:02}-{:03}", self.rng.gen_range(20..30), self.rng.gen_range(1..366)))
-            }
-            ("date", "iso_week") => {
-                Ok(format!("{}-W{:02}", self.rng.gen_range(2020..2030), self.rng.gen_range(1..53)))
-            }
+            ("date", "ordinal") => Ok(format!(
+                "{}-{:03}",
+                self.rng.gen_range(2020..2030),
+                self.rng.gen_range(1..366)
+            )),
+            ("date", "julian") => Ok(format!(
+                "{:02}-{:03}",
+                self.rng.gen_range(20..30),
+                self.rng.gen_range(1..366)
+            )),
+            ("date", "iso_week") => Ok(format!(
+                "{}-W{:02}",
+                self.rng.gen_range(2020..2030),
+                self.rng.gen_range(1..53)
+            )),
 
             // ── time (5 types) ───────────────────────────────────────────
             ("time", "iso") => {
@@ -208,29 +228,24 @@ impl Generator {
                 let micros = self.rng.gen_range(0..1000000);
                 Ok(format!("{}.{:06}", dt.format("%H:%M:%S"), micros))
             }
-            ("time", "hms_24h") => {
-                Ok(self.random_datetime().format("%H:%M:%S").to_string())
-            }
-            ("time", "hm_24h") => {
-                Ok(self.random_datetime().format("%H:%M").to_string())
-            }
-            ("time", "hms_12h") => {
-                Ok(self.random_datetime().format("%I:%M:%S %p").to_string())
-            }
-            ("time", "hm_12h") => {
-                Ok(self.random_datetime().format("%I:%M %p").to_string())
-            }
+            ("time", "hms_24h") => Ok(self.random_datetime().format("%H:%M:%S").to_string()),
+            ("time", "hm_24h") => Ok(self.random_datetime().format("%H:%M").to_string()),
+            ("time", "hms_12h") => Ok(self.random_datetime().format("%I:%M:%S %p").to_string()),
+            ("time", "hm_12h") => Ok(self.random_datetime().format("%I:%M %p").to_string()),
 
             // ── epoch (3 types) ──────────────────────────────────────────
-            ("epoch", "unix_seconds") => {
-                Ok(self.rng.gen_range(1_000_000_000i64..2_000_000_000).to_string())
-            }
-            ("epoch", "unix_milliseconds") => {
-                Ok(self.rng.gen_range(1_000_000_000_000i64..2_000_000_000_000).to_string())
-            }
-            ("epoch", "unix_microseconds") => {
-                Ok(self.rng.gen_range(1_000_000_000_000_000i64..2_000_000_000_000_000).to_string())
-            }
+            ("epoch", "unix_seconds") => Ok(self
+                .rng
+                .gen_range(1_000_000_000i64..2_000_000_000)
+                .to_string()),
+            ("epoch", "unix_milliseconds") => Ok(self
+                .rng
+                .gen_range(1_000_000_000_000i64..2_000_000_000_000)
+                .to_string()),
+            ("epoch", "unix_microseconds") => Ok(self
+                .rng
+                .gen_range(1_000_000_000_000_000i64..2_000_000_000_000_000)
+                .to_string()),
 
             // ── offset (2 types) ─────────────────────────────────────────
             ("offset", "utc") => {
@@ -239,10 +254,18 @@ impl Generator {
             }
             ("offset", "iana") => {
                 let tzs = [
-                    "America/New_York", "America/Los_Angeles", "America/Chicago",
-                    "Europe/London", "Europe/Paris", "Europe/Berlin",
-                    "Asia/Tokyo", "Asia/Shanghai", "Asia/Singapore",
-                    "Australia/Sydney", "Pacific/Auckland", "Africa/Cairo",
+                    "America/New_York",
+                    "America/Los_Angeles",
+                    "America/Chicago",
+                    "Europe/London",
+                    "Europe/Paris",
+                    "Europe/Berlin",
+                    "Asia/Tokyo",
+                    "Asia/Shanghai",
+                    "Asia/Singapore",
+                    "Australia/Sydney",
+                    "Pacific/Auckland",
+                    "Africa/Cairo",
                 ];
                 Ok(tzs[self.rng.gen_range(0..tzs.len())].to_string())
             }
@@ -265,14 +288,32 @@ impl Generator {
             ("component", "year") => Ok(self.rng.gen_range(1990..2030).to_string()),
             ("component", "month_name") => {
                 let months = [
-                    "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December",
+                    "January",
+                    "February",
+                    "March",
+                    "April",
+                    "May",
+                    "June",
+                    "July",
+                    "August",
+                    "September",
+                    "October",
+                    "November",
+                    "December",
                 ];
                 Ok(months[self.rng.gen_range(0..12)].to_string())
             }
             ("component", "day_of_month") => Ok(self.rng.gen_range(1u32..=31).to_string()),
             ("component", "day_of_week") => {
-                let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                let days = [
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                    "Sunday",
+                ];
                 Ok(days[self.rng.gen_range(0..7)].to_string())
             }
             ("component", "century") => {
@@ -281,14 +322,21 @@ impl Generator {
             }
             ("component", "periodicity") => {
                 let periods = [
-                    "Once", "Daily", "Weekly", "Biweekly",
-                    "Monthly", "Quarterly", "Yearly", "Never",
+                    "Once",
+                    "Daily",
+                    "Weekly",
+                    "Biweekly",
+                    "Monthly",
+                    "Quarterly",
+                    "Yearly",
+                    "Never",
                 ];
                 Ok(periods[self.rng.gen_range(0..periods.len())].to_string())
             }
 
             _ => Err(GeneratorError::NotImplemented(format!(
-                "datetime.{}.{}", category, type_name
+                "datetime.{}.{}",
+                category, type_name
             ))),
         }
     }
@@ -304,25 +352,21 @@ impl Generator {
     ) -> Result<String, GeneratorError> {
         match (category, type_name) {
             // ── internet (13 types) ──────────────────────────────────────
-            ("internet", "ip_v4") => {
-                Ok(format!(
-                    "{}.{}.{}.{}",
-                    self.rng.gen_range(1..255),
-                    self.rng.gen_range(0..255),
-                    self.rng.gen_range(0..255),
-                    self.rng.gen_range(1..255)
-                ))
-            }
-            ("internet", "ip_v4_with_port") => {
-                Ok(format!(
-                    "{}.{}.{}.{}:{}",
-                    self.rng.gen_range(1..255),
-                    self.rng.gen_range(0..255),
-                    self.rng.gen_range(0..255),
-                    self.rng.gen_range(1..255),
-                    self.rng.gen_range(1024..65535)
-                ))
-            }
+            ("internet", "ip_v4") => Ok(format!(
+                "{}.{}.{}.{}",
+                self.rng.gen_range(1..255),
+                self.rng.gen_range(0..255),
+                self.rng.gen_range(0..255),
+                self.rng.gen_range(1..255)
+            )),
+            ("internet", "ip_v4_with_port") => Ok(format!(
+                "{}.{}.{}.{}:{}",
+                self.rng.gen_range(1..255),
+                self.rng.gen_range(0..255),
+                self.rng.gen_range(0..255),
+                self.rng.gen_range(1..255),
+                self.rng.gen_range(1024..65535)
+            )),
             ("internet", "ip_v6") => {
                 let groups: Vec<String> = (0..8)
                     .map(|_| format!("{:04x}", self.rng.gen_range(0u16..65535)))
@@ -345,29 +389,46 @@ impl Generator {
                 let path_segments: Vec<String> = (0..self.rng.gen_range(1..4))
                     .map(|_| self.random_word())
                     .collect();
-                Ok(format!("https://{}.{}/{}", domain, tld, path_segments.join("/")))
+                Ok(format!(
+                    "https://{}.{}/{}",
+                    domain,
+                    tld,
+                    path_segments.join("/")
+                ))
             }
             ("internet", "uri") => {
                 let schemes = ["https", "http", "ftp", "mailto", "ssh"];
                 let scheme = schemes[self.rng.gen_range(0..schemes.len())];
                 if scheme == "mailto" {
-                    Ok(format!("mailto:{}@{}.com", self.random_word(), self.random_word()))
+                    Ok(format!(
+                        "mailto:{}@{}.com",
+                        self.random_word(),
+                        self.random_word()
+                    ))
                 } else {
-                    Ok(format!("{}://{}.com/{}", scheme, self.random_word(), self.random_word()))
+                    Ok(format!(
+                        "{}://{}.com/{}",
+                        scheme,
+                        self.random_word(),
+                        self.random_word()
+                    ))
                 }
             }
             ("internet", "hostname") => {
                 let tlds = ["com", "org", "net", "io", "dev"];
-                Ok(format!("{}.{}", self.random_word(), tlds[self.rng.gen_range(0..tlds.len())]))
+                Ok(format!(
+                    "{}.{}",
+                    self.random_word(),
+                    tlds[self.rng.gen_range(0..tlds.len())]
+                ))
             }
             ("internet", "port") => {
                 // Weighted toward common/well-known ports to distinguish from generic integers
                 if self.rng.gen_bool(0.6) {
                     // Well-known ports
                     let common = [
-                        22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995,
-                        3306, 3389, 5432, 5672, 5900, 6379, 8080, 8443, 8888,
-                        9090, 9200, 9300, 27017,
+                        22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 3306, 3389, 5432, 5672,
+                        5900, 6379, 8080, 8443, 8888, 9090, 9200, 9300, 27017,
                     ];
                     Ok(common[self.rng.gen_range(0..common.len())].to_string())
                 } else if self.rng.gen_bool(0.5) {
@@ -379,7 +440,9 @@ impl Generator {
                 }
             }
             ("internet", "top_level_domain") => {
-                let tlds = ["com", "org", "net", "io", "dev", "edu", "gov", "mil", "co.uk", "com.au"];
+                let tlds = [
+                    "com", "org", "net", "io", "dev", "edu", "gov", "mil", "co.uk", "com.au",
+                ];
                 Ok(tlds[self.rng.gen_range(0..tlds.len())].to_string())
             }
             ("internet", "slug") => {
@@ -406,7 +469,9 @@ impl Generator {
                 Ok(methods[self.rng.gen_range(0..methods.len())].to_string())
             }
             ("internet", "http_status_code") => {
-                let codes = [200, 201, 204, 301, 302, 304, 400, 401, 403, 404, 405, 500, 502, 503];
+                let codes = [
+                    200, 201, 204, 301, 302, 304, 400, 401, 403, 404, 405, 500, 502, 503,
+                ];
                 Ok(codes[self.rng.gen_range(0..codes.len())].to_string())
             }
 
@@ -452,7 +517,10 @@ impl Generator {
                 let publisher = self.rng.gen_range(10000..99999);
                 let title = self.rng.gen_range(100..999);
                 let check = self.rng.gen_range(0..9);
-                Ok(format!("{}-{}-{:05}-{:03}-{}", prefix, group, publisher, title, check))
+                Ok(format!(
+                    "{}-{}-{:05}-{:03}-{}",
+                    prefix, group, publisher, title, check
+                ))
             }
             ("code", "imei") => {
                 // Generate Luhn-valid 15-digit IMEI with realistic TAC prefixes
@@ -480,12 +548,12 @@ impl Generator {
                         "000", "001", "030", "040", // US/Canada
                         "300", "310", "350", "370", // France
                         "400", "410", "420", "440", // Germany
-                        "450", "459",               // Japan
-                        "500", "509",               // UK
-                        "690", "694", "699",        // China
-                        "880",                      // South Korea
-                        "890",                      // India
-                        "930", "940",               // Australia
+                        "450", "459", // Japan
+                        "500", "509", // UK
+                        "690", "694", "699", // China
+                        "880", // South Korea
+                        "890", // India
+                        "930", "940", // Australia
                     ];
                     let prefix = gs1_prefixes[self.rng.gen_range(0..gs1_prefixes.len())];
                     let remaining = 12 - prefix.len();
@@ -507,21 +575,28 @@ impl Generator {
             ("code", "issn") => {
                 let check_chars = "0123456789X";
                 let check = check_chars.chars().nth(self.rng.gen_range(0..11)).unwrap();
-                Ok(format!("{:04}-{:03}{}", self.rng.gen_range(1000..9999), self.rng.gen_range(100..999), check))
+                Ok(format!(
+                    "{:04}-{:03}{}",
+                    self.rng.gen_range(1000..9999),
+                    self.rng.gen_range(100..999),
+                    check
+                ))
             }
             ("code", "locale_code") => {
                 let codes = [
-                    "en", "en-US", "en-GB", "en-AU", "en-CA",
-                    "fr", "fr-FR", "fr-CA", "de", "de-DE", "de-AT",
-                    "es", "es-ES", "es-MX", "it", "it-IT",
-                    "ja", "ja-JP", "ko", "ko-KR", "zh", "zh-CN", "zh-TW",
-                    "pt", "pt-BR", "ru", "ru-RU", "nl", "nl-NL",
+                    "en", "en-US", "en-GB", "en-AU", "en-CA", "fr", "fr-FR", "fr-CA", "de",
+                    "de-DE", "de-AT", "es", "es-ES", "es-MX", "it", "it-IT", "ja", "ja-JP", "ko",
+                    "ko-KR", "zh", "zh-CN", "zh-TW", "pt", "pt-BR", "ru", "ru-RU", "nl", "nl-NL",
                 ];
                 Ok(codes[self.rng.gen_range(0..codes.len())].to_string())
             }
             ("code", "pin") => {
                 let len = if self.rng.gen_bool(0.7) { 4 } else { 6 };
-                Ok(format!("{:0width$}", self.rng.gen_range(0..10u32.pow(len)), width = len as usize))
+                Ok(format!(
+                    "{:0width$}",
+                    self.rng.gen_range(0..10u32.pow(len)),
+                    width = len as usize
+                ))
             }
 
             // ── development (8 types) ────────────────────────────────────
@@ -550,65 +625,126 @@ impl Generator {
             }
             ("development", "programming_language") => {
                 let langs = [
-                    "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Go",
-                    "Rust", "PHP", "Ruby", "Kotlin", "Swift", "Scala", "Haskell",
-                    "R", "Julia", "MATLAB", "Perl", "Lua", "Elixir",
+                    "Python",
+                    "JavaScript",
+                    "TypeScript",
+                    "Java",
+                    "C++",
+                    "C#",
+                    "Go",
+                    "Rust",
+                    "PHP",
+                    "Ruby",
+                    "Kotlin",
+                    "Swift",
+                    "Scala",
+                    "Haskell",
+                    "R",
+                    "Julia",
+                    "MATLAB",
+                    "Perl",
+                    "Lua",
+                    "Elixir",
                 ];
                 Ok(langs[self.rng.gen_range(0..langs.len())].to_string())
             }
             ("development", "software_license") => {
                 let licenses = [
-                    "MIT", "Apache-2.0", "GPL-3.0", "GPL-2.0", "BSD-3-Clause",
-                    "BSD-2-Clause", "ISC", "MPL-2.0", "LGPL-3.0", "AGPL-3.0",
-                    "Unlicense", "CC0-1.0",
+                    "MIT",
+                    "Apache-2.0",
+                    "GPL-3.0",
+                    "GPL-2.0",
+                    "BSD-3-Clause",
+                    "BSD-2-Clause",
+                    "ISC",
+                    "MPL-2.0",
+                    "LGPL-3.0",
+                    "AGPL-3.0",
+                    "Unlicense",
+                    "CC0-1.0",
                 ];
                 Ok(licenses[self.rng.gen_range(0..licenses.len())].to_string())
             }
             ("development", "stage") => {
-                let stages = ["Alpha", "Beta", "Release Candidate", "Stable", "LTS", "Deprecated"];
+                let stages = [
+                    "Alpha",
+                    "Beta",
+                    "Release Candidate",
+                    "Stable",
+                    "LTS",
+                    "Deprecated",
+                ];
                 Ok(stages[self.rng.gen_range(0..stages.len())].to_string())
             }
             ("development", "os") => {
                 let oses = [
-                    "Windows 10", "Windows 11", "macOS", "Ubuntu", "Fedora",
-                    "Debian", "Arch Linux", "CentOS", "iOS", "Android",
+                    "Windows 10",
+                    "Windows 11",
+                    "macOS",
+                    "Ubuntu",
+                    "Fedora",
+                    "Debian",
+                    "Arch Linux",
+                    "CentOS",
+                    "iOS",
+                    "Android",
                 ];
                 Ok(oses[self.rng.gen_range(0..oses.len())].to_string())
             }
             ("development", "boolean") => {
-                let bools = ["true", "false", "yes", "no", "1", "0", "True", "False", "YES", "NO"];
+                let bools = [
+                    "true", "false", "yes", "no", "1", "0", "True", "False", "YES", "NO",
+                ];
                 Ok(bools[self.rng.gen_range(0..bools.len())].to_string())
             }
 
             // ── hardware (4 types) ───────────────────────────────────────
             ("hardware", "cpu") => {
                 let cpus = [
-                    "Intel Core i9-14900K", "Intel Core i7-14700K", "Intel Core i5-14600K",
-                    "AMD Ryzen 9 7950X", "AMD Ryzen 7 7700X", "AMD Ryzen 5 7600X",
-                    "Apple M3 Pro", "Apple M3 Max", "Apple M2 Ultra",
+                    "Intel Core i9-14900K",
+                    "Intel Core i7-14700K",
+                    "Intel Core i5-14600K",
+                    "AMD Ryzen 9 7950X",
+                    "AMD Ryzen 7 7700X",
+                    "AMD Ryzen 5 7600X",
+                    "Apple M3 Pro",
+                    "Apple M3 Max",
+                    "Apple M2 Ultra",
                     "Qualcomm Snapdragon 8 Gen 3",
                 ];
                 Ok(cpus[self.rng.gen_range(0..cpus.len())].to_string())
             }
             ("hardware", "ram_size") => {
-                let sizes = ["4GB", "8GB", "16GB", "32GB", "64GB", "128GB", "256GB", "512MB"];
+                let sizes = [
+                    "4GB", "8GB", "16GB", "32GB", "64GB", "128GB", "256GB", "512MB",
+                ];
                 Ok(sizes[self.rng.gen_range(0..sizes.len())].to_string())
             }
             ("hardware", "screen_size") => {
-                let sizes = ["13.3\"", "14\"", "15.6\"", "16\"", "24\"", "27\"", "32\"", "34\""];
+                let sizes = [
+                    "13.3\"", "14\"", "15.6\"", "16\"", "24\"", "27\"", "32\"", "34\"",
+                ];
                 Ok(sizes[self.rng.gen_range(0..sizes.len())].to_string())
             }
             ("hardware", "generation") => {
                 let gens = [
-                    "1st Generation", "2nd Generation", "3rd Generation",
-                    "4th Generation", "5th Generation", "Gen 3", "Gen 4", "Gen 5",
-                    "Rev 2", "v3",
+                    "1st Generation",
+                    "2nd Generation",
+                    "3rd Generation",
+                    "4th Generation",
+                    "5th Generation",
+                    "Gen 3",
+                    "Gen 4",
+                    "Gen 5",
+                    "Rev 2",
+                    "v3",
                 ];
                 Ok(gens[self.rng.gen_range(0..gens.len())].to_string())
             }
 
             _ => Err(GeneratorError::NotImplemented(format!(
-                "technology.{}.{}", category, type_name
+                "technology.{}.{}",
+                category, type_name
             ))),
         }
     }
@@ -617,11 +753,7 @@ impl Generator {
     // DOMAIN: identity (25 types)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    fn gen_identity(
-        &mut self,
-        category: &str,
-        type_name: &str,
-    ) -> Result<String, GeneratorError> {
+    fn gen_identity(&mut self, category: &str, type_name: &str) -> Result<String, GeneratorError> {
         match (category, type_name) {
             // ── person (16 types) ────────────────────────────────────────
             ("person", "full_name") => {
@@ -634,14 +766,27 @@ impl Generator {
             ("person", "email") => {
                 let first = self.random_first_name().to_lowercase();
                 let last = self.random_last_name().to_lowercase();
-                let domains = ["gmail.com", "yahoo.com", "outlook.com", "example.com", "company.org"];
+                let domains = [
+                    "gmail.com",
+                    "yahoo.com",
+                    "outlook.com",
+                    "example.com",
+                    "company.org",
+                ];
                 let sep = [".", "_", ""][self.rng.gen_range(0..3)];
                 let num = if self.rng.gen_bool(0.3) {
                     self.rng.gen_range(1..99).to_string()
                 } else {
                     String::new()
                 };
-                Ok(format!("{}{}{}{}@{}", first, sep, last, num, domains[self.rng.gen_range(0..domains.len())]))
+                Ok(format!(
+                    "{}{}{}{}@{}",
+                    first,
+                    sep,
+                    last,
+                    num,
+                    domains[self.rng.gen_range(0..domains.len())]
+                ))
             }
             ("person", "phone_number") => {
                 // Locale-aware phone number generation with valid country formats
@@ -654,7 +799,10 @@ impl Generator {
                         if self.rng.gen_bool(0.5) {
                             Ok(format!("+1{:03}{:03}{:04}", area, exchange, subscriber))
                         } else {
-                            Ok(format!("+1 ({:03}) {:03}-{:04}", area, exchange, subscriber))
+                            Ok(format!(
+                                "+1 ({:03}) {:03}-{:04}",
+                                area, exchange, subscriber
+                            ))
                         }
                     }
                     1 => {
@@ -776,7 +924,10 @@ impl Generator {
                 // Add special chars
                 let specials = "!@#$%^&*()_+-=[]{}|;:',.<>?";
                 let pos = self.rng.gen_range(0..pass.len());
-                let special = specials.chars().nth(self.rng.gen_range(0..specials.len())).unwrap();
+                let special = specials
+                    .chars()
+                    .nth(self.rng.gen_range(0..specials.len()))
+                    .unwrap();
                 pass.insert(pos, special);
                 Ok(pass)
             }
@@ -795,9 +946,21 @@ impl Generator {
             }
             ("person", "nationality") => {
                 let nationalities = [
-                    "American", "British", "Canadian", "Australian", "German",
-                    "French", "Japanese", "Chinese", "Korean", "Brazilian",
-                    "Indian", "Mexican", "Italian", "Spanish", "Russian",
+                    "American",
+                    "British",
+                    "Canadian",
+                    "Australian",
+                    "German",
+                    "French",
+                    "Japanese",
+                    "Chinese",
+                    "Korean",
+                    "Brazilian",
+                    "Indian",
+                    "Mexican",
+                    "Italian",
+                    "Spanish",
+                    "Russian",
                 ];
                 Ok(nationalities[self.rng.gen_range(0..nationalities.len())].to_string())
             }
@@ -826,10 +989,21 @@ impl Generator {
             ("person", "age") => Ok(self.rng.gen_range(1..100).to_string()),
             ("person", "occupation") => {
                 let jobs = [
-                    "Software Engineer", "Data Scientist", "Product Manager",
-                    "Designer", "Teacher", "Nurse", "Accountant", "Lawyer",
-                    "Chef", "Pilot", "Architect", "Pharmacist",
-                    "Marketing Manager", "Sales Representative", "Researcher",
+                    "Software Engineer",
+                    "Data Scientist",
+                    "Product Manager",
+                    "Designer",
+                    "Teacher",
+                    "Nurse",
+                    "Accountant",
+                    "Lawyer",
+                    "Chef",
+                    "Pilot",
+                    "Architect",
+                    "Pharmacist",
+                    "Marketing Manager",
+                    "Sales Representative",
+                    "Researcher",
                 ];
                 Ok(jobs[self.rng.gen_range(0..jobs.len())].to_string())
             }
@@ -878,7 +1052,14 @@ impl Generator {
                 }
             }
             ("payment", "credit_card_network") => {
-                let networks = ["Visa", "Mastercard", "Amex", "Discover", "Diners Club", "JCB"];
+                let networks = [
+                    "Visa",
+                    "Mastercard",
+                    "Amex",
+                    "Discover",
+                    "Diners Club",
+                    "JCB",
+                ];
                 Ok(networks[self.rng.gen_range(0..networks.len())].to_string())
             }
             ("payment", "bitcoin_address") => {
@@ -909,9 +1090,7 @@ impl Generator {
                     }
                 }
             }
-            ("payment", "ethereum_address") => {
-                Ok(format!("0x{}", self.gen_hex_string(40)))
-            }
+            ("payment", "ethereum_address") => Ok(format!("0x{}", self.gen_hex_string(40))),
             ("payment", "paypal_email") => {
                 // PayPal-distinctive patterns: paypal.com domains, business patterns, pp- prefixes
                 let first = self.random_first_name().to_lowercase();
@@ -938,7 +1117,8 @@ impl Generator {
                     }
                     _ => {
                         // PayPal-linked email with paypal subdomain
-                        Ok(format!("paypal-{}{}@{}.com",
+                        Ok(format!(
+                            "paypal-{}{}@{}.com",
                             first,
                             self.rng.gen_range(1..999),
                             self.random_word()
@@ -950,27 +1130,41 @@ impl Generator {
             // ── academic (2 types) ───────────────────────────────────────
             ("academic", "degree") => {
                 let degrees = [
-                    "Bachelor of Science", "Bachelor of Arts", "Master of Science",
-                    "Master of Arts", "Master of Business Administration",
-                    "Doctor of Philosophy", "Associate Degree",
-                    "Juris Doctor", "Doctor of Medicine",
+                    "Bachelor of Science",
+                    "Bachelor of Arts",
+                    "Master of Science",
+                    "Master of Arts",
+                    "Master of Business Administration",
+                    "Doctor of Philosophy",
+                    "Associate Degree",
+                    "Juris Doctor",
+                    "Doctor of Medicine",
                 ];
                 Ok(degrees[self.rng.gen_range(0..degrees.len())].to_string())
             }
             ("academic", "university") => {
                 let unis = [
-                    "Harvard University", "Stanford University", "MIT",
-                    "Oxford University", "Cambridge University",
-                    "ETH Zurich", "University of Tokyo", "Caltech",
-                    "Princeton University", "Yale University",
-                    "Columbia University", "UC Berkeley",
-                    "University of Melbourne", "Sorbonne University",
+                    "Harvard University",
+                    "Stanford University",
+                    "MIT",
+                    "Oxford University",
+                    "Cambridge University",
+                    "ETH Zurich",
+                    "University of Tokyo",
+                    "Caltech",
+                    "Princeton University",
+                    "Yale University",
+                    "Columbia University",
+                    "UC Berkeley",
+                    "University of Melbourne",
+                    "Sorbonne University",
                 ];
                 Ok(unis[self.rng.gen_range(0..unis.len())].to_string())
             }
 
             _ => Err(GeneratorError::NotImplemented(format!(
-                "identity.{}.{}", category, type_name
+                "identity.{}.{}",
+                category, type_name
             ))),
         }
     }
@@ -979,50 +1173,90 @@ impl Generator {
     // DOMAIN: geography (16 types)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    fn gen_geography(
-        &mut self,
-        category: &str,
-        type_name: &str,
-    ) -> Result<String, GeneratorError> {
+    fn gen_geography(&mut self, category: &str, type_name: &str) -> Result<String, GeneratorError> {
         match (category, type_name) {
             // ── location (5 types) ───────────────────────────────────────
             ("location", "country") => {
                 let countries = [
-                    "United States", "United Kingdom", "Canada", "Australia",
-                    "Germany", "France", "Japan", "China", "India", "Brazil",
-                    "Mexico", "Italy", "Spain", "South Korea", "Russia",
-                    "Netherlands", "Switzerland", "Sweden", "Norway", "Denmark",
+                    "United States",
+                    "United Kingdom",
+                    "Canada",
+                    "Australia",
+                    "Germany",
+                    "France",
+                    "Japan",
+                    "China",
+                    "India",
+                    "Brazil",
+                    "Mexico",
+                    "Italy",
+                    "Spain",
+                    "South Korea",
+                    "Russia",
+                    "Netherlands",
+                    "Switzerland",
+                    "Sweden",
+                    "Norway",
+                    "Denmark",
                 ];
                 Ok(countries[self.rng.gen_range(0..countries.len())].to_string())
             }
             ("location", "country_code") => {
                 let codes = [
-                    "US", "GB", "CA", "AU", "DE", "FR", "JP", "CN", "IN", "BR",
-                    "MX", "IT", "ES", "KR", "RU", "NL", "CH", "SE", "NO", "DK",
+                    "US", "GB", "CA", "AU", "DE", "FR", "JP", "CN", "IN", "BR", "MX", "IT", "ES",
+                    "KR", "RU", "NL", "CH", "SE", "NO", "DK",
                 ];
                 Ok(codes[self.rng.gen_range(0..codes.len())].to_string())
             }
             ("location", "continent") => {
                 let continents = [
-                    "Africa", "Asia", "Europe", "North America",
-                    "South America", "Oceania", "Antarctica",
+                    "Africa",
+                    "Asia",
+                    "Europe",
+                    "North America",
+                    "South America",
+                    "Oceania",
+                    "Antarctica",
                 ];
                 Ok(continents[self.rng.gen_range(0..continents.len())].to_string())
             }
             ("location", "region") => {
                 let regions = [
-                    "California", "Texas", "New York", "Florida", "Ontario",
-                    "Quebec", "Bavaria", "Île-de-France", "New South Wales",
-                    "Victoria", "Tokyo", "Guangdong", "Maharashtra",
+                    "California",
+                    "Texas",
+                    "New York",
+                    "Florida",
+                    "Ontario",
+                    "Quebec",
+                    "Bavaria",
+                    "Île-de-France",
+                    "New South Wales",
+                    "Victoria",
+                    "Tokyo",
+                    "Guangdong",
+                    "Maharashtra",
                 ];
                 Ok(regions[self.rng.gen_range(0..regions.len())].to_string())
             }
             ("location", "city") => {
                 let cities = [
-                    "New York", "London", "Tokyo", "Paris", "Sydney",
-                    "Berlin", "Toronto", "San Francisco", "Shanghai",
-                    "Mumbai", "São Paulo", "Seoul", "Singapore",
-                    "Amsterdam", "Barcelona", "Dubai", "Los Angeles",
+                    "New York",
+                    "London",
+                    "Tokyo",
+                    "Paris",
+                    "Sydney",
+                    "Berlin",
+                    "Toronto",
+                    "San Francisco",
+                    "Shanghai",
+                    "Mumbai",
+                    "São Paulo",
+                    "Seoul",
+                    "Singapore",
+                    "Amsterdam",
+                    "Barcelona",
+                    "Dubai",
+                    "Los Angeles",
                 ];
                 Ok(cities[self.rng.gen_range(0..cities.len())].to_string())
             }
@@ -1030,11 +1264,29 @@ impl Generator {
             // ── address (5 types) ────────────────────────────────────────
             ("address", "full_address") => {
                 let num = self.rng.gen_range(1..9999);
-                let streets = ["Main Street", "Oak Avenue", "Park Road", "Broadway", "Elm Street", "5th Avenue", "High Street", "King Street"];
-                let cities = ["New York", "London", "Paris", "Berlin", "Sydney", "Toronto", "Tokyo"];
-                let codes = ["NY 10001", "W1C 1AX", "75004", "10115", "2000", "M5V 2T6", "100-0001"];
-                let idx = self.rng.gen_range(0..streets.len().min(cities.len()).min(codes.len()));
-                Ok(format!("{} {}, {}, {}", num, streets[idx], cities[idx], codes[idx]))
+                let streets = [
+                    "Main Street",
+                    "Oak Avenue",
+                    "Park Road",
+                    "Broadway",
+                    "Elm Street",
+                    "5th Avenue",
+                    "High Street",
+                    "King Street",
+                ];
+                let cities = [
+                    "New York", "London", "Paris", "Berlin", "Sydney", "Toronto", "Tokyo",
+                ];
+                let codes = [
+                    "NY 10001", "W1C 1AX", "75004", "10115", "2000", "M5V 2T6", "100-0001",
+                ];
+                let idx = self
+                    .rng
+                    .gen_range(0..streets.len().min(cities.len()).min(codes.len()));
+                Ok(format!(
+                    "{} {}, {}, {}",
+                    num, streets[idx], cities[idx], codes[idx]
+                ))
             }
             ("address", "street_number") => {
                 if self.rng.gen_bool(0.9) {
@@ -1046,17 +1298,39 @@ impl Generator {
             }
             ("address", "street_name") => {
                 let names = [
-                    "Main Street", "Oak Avenue", "Elm Street", "Park Road",
-                    "Broadway", "5th Avenue", "High Street", "King Street",
-                    "Queen Street", "Church Street", "Maple Drive", "Cedar Lane",
+                    "Main Street",
+                    "Oak Avenue",
+                    "Elm Street",
+                    "Park Road",
+                    "Broadway",
+                    "5th Avenue",
+                    "High Street",
+                    "King Street",
+                    "Queen Street",
+                    "Church Street",
+                    "Maple Drive",
+                    "Cedar Lane",
                 ];
                 Ok(names[self.rng.gen_range(0..names.len())].to_string())
             }
             ("address", "street_suffix") => {
                 let suffixes = [
-                    "Street", "Avenue", "Boulevard", "Road", "Lane",
-                    "Drive", "Court", "Way", "Circle", "Place",
-                    "St", "Ave", "Blvd", "Rd", "Ln", "Dr",
+                    "Street",
+                    "Avenue",
+                    "Boulevard",
+                    "Road",
+                    "Lane",
+                    "Drive",
+                    "Court",
+                    "Way",
+                    "Circle",
+                    "Place",
+                    "St",
+                    "Ave",
+                    "Blvd",
+                    "Rd",
+                    "Ln",
+                    "Dr",
                 ];
                 Ok(suffixes[self.rng.gen_range(0..suffixes.len())].to_string())
             }
@@ -1068,14 +1342,16 @@ impl Generator {
                     }
                     1 => {
                         // US ZIP+4: 5 digits-4 digits
-                        Ok(format!("{:05}-{:04}",
+                        Ok(format!(
+                            "{:05}-{:04}",
                             self.rng.gen_range(10000..99999),
                             self.rng.gen_range(1000..9999)
                         ))
                     }
                     2 => {
                         // UK: A9 9AA or A9A 9AA format
-                        Ok(format!("{}{}{} {}{}{}",
+                        Ok(format!(
+                            "{}{}{} {}{}{}",
                             (b'A' + self.rng.gen_range(0..26)) as char,
                             self.rng.gen_range(1..9),
                             (b'A' + self.rng.gen_range(0..26)) as char,
@@ -1086,7 +1362,8 @@ impl Generator {
                     }
                     3 => {
                         // Canada: A1A 1A1
-                        Ok(format!("{}{}{}  {}{}{}",
+                        Ok(format!(
+                            "{}{}{}  {}{}{}",
                             (b'A' + self.rng.gen_range(0..26)) as char,
                             self.rng.gen_range(1..9),
                             (b'A' + self.rng.gen_range(0..26)) as char,
@@ -1097,7 +1374,8 @@ impl Generator {
                     }
                     4 => {
                         // Japan: 123-4567
-                        Ok(format!("{:03}-{:04}",
+                        Ok(format!(
+                            "{:03}-{:04}",
                             self.rng.gen_range(100..999),
                             self.rng.gen_range(1000..9999)
                         ))
@@ -1112,7 +1390,8 @@ impl Generator {
                     }
                     _ => {
                         // Netherlands: 4 digits + 2 letters
-                        Ok(format!("{:04} {}{}",
+                        Ok(format!(
+                            "{:04} {}{}",
                             self.rng.gen_range(1000..9999),
                             (b'A' + self.rng.gen_range(0..26)) as char,
                             (b'A' + self.rng.gen_range(0..26)) as char,
@@ -1152,12 +1431,15 @@ impl Generator {
 
             // ── contact (1 type) ─────────────────────────────────────────
             ("contact", "calling_code") => {
-                let codes = ["+1", "+44", "+33", "+49", "+81", "+86", "+91", "+61", "+55", "+82"];
+                let codes = [
+                    "+1", "+44", "+33", "+49", "+81", "+86", "+91", "+61", "+55", "+82",
+                ];
                 Ok(codes[self.rng.gen_range(0..codes.len())].to_string())
             }
 
             _ => Err(GeneratorError::NotImplemented(format!(
-                "geography.{}.{}", category, type_name
+                "geography.{}.{}",
+                category, type_name
             ))),
         }
     }
@@ -1173,9 +1455,7 @@ impl Generator {
     ) -> Result<String, GeneratorError> {
         match (category, type_name) {
             // ── numeric (5 types) ────────────────────────────────────────
-            ("numeric", "integer_number") => {
-                Ok(self.rng.gen_range(-100000i64..100000).to_string())
-            }
+            ("numeric", "integer_number") => Ok(self.rng.gen_range(-100000i64..100000).to_string()),
             ("numeric", "decimal_number") => {
                 let val = (self.rng.gen::<f64>() - 0.5) * 2000.0;
                 let precision = self.rng.gen_range(1..8);
@@ -1195,9 +1475,7 @@ impl Generator {
                     Ok(format!("{:.2}%", val))
                 }
             }
-            ("numeric", "increment") => {
-                Ok(self.rng.gen_range(1..100000).to_string())
-            }
+            ("numeric", "increment") => Ok(self.rng.gen_range(1..100000).to_string()),
 
             // ── text (5 types) ───────────────────────────────────────────
             ("text", "plain_text") => {
@@ -1243,9 +1521,30 @@ impl Generator {
             }
             ("text", "emoji") => {
                 let emojis = [
-                    "\u{1f600}", "\u{1f602}", "\u{1f923}", "\u{1f60a}", "\u{1f60d}", "\u{1f970}", "\u{1f60e}", "\u{1f914}",
-                    "\u{1f622}", "\u{1f621}", "\u{1f389}", "\u{1f525}", "\u{2764}\u{fe0f}", "\u{1f44d}", "\u{1f44e}", "\u{1f680}",
-                    "\u{1f4bb}", "\u{1f4f1}", "\u{1f30d}", "\u{26a1}", "\u{2705}", "\u{274c}", "\u{2b50}", "\u{1f3b8}",
+                    "\u{1f600}",
+                    "\u{1f602}",
+                    "\u{1f923}",
+                    "\u{1f60a}",
+                    "\u{1f60d}",
+                    "\u{1f970}",
+                    "\u{1f60e}",
+                    "\u{1f914}",
+                    "\u{1f622}",
+                    "\u{1f621}",
+                    "\u{1f389}",
+                    "\u{1f525}",
+                    "\u{2764}\u{fe0f}",
+                    "\u{1f44d}",
+                    "\u{1f44e}",
+                    "\u{1f680}",
+                    "\u{1f4bb}",
+                    "\u{1f4f1}",
+                    "\u{1f30d}",
+                    "\u{26a1}",
+                    "\u{2705}",
+                    "\u{274c}",
+                    "\u{2b50}",
+                    "\u{1f3b8}",
                 ];
                 Ok(emojis[self.rng.gen_range(0..emojis.len())].to_string())
             }
@@ -1253,19 +1552,31 @@ impl Generator {
             // ── file (3 types) ───────────────────────────────────────────
             ("file", "extension") => {
                 let exts = [
-                    "txt", "pdf", "docx", "xlsx", "csv", "json", "xml", "html",
-                    "js", "py", "rs", "go", "java", "cpp", "md", "yaml",
-                    "png", "jpg", "gif", "svg", "mp4", "mp3", "zip", "gz",
+                    "txt", "pdf", "docx", "xlsx", "csv", "json", "xml", "html", "js", "py", "rs",
+                    "go", "java", "cpp", "md", "yaml", "png", "jpg", "gif", "svg", "mp4", "mp3",
+                    "zip", "gz",
                 ];
                 Ok(exts[self.rng.gen_range(0..exts.len())].to_string())
             }
             ("file", "mime_type") => {
                 let types = [
-                    "text/plain", "text/html", "text/css", "text/csv",
-                    "application/json", "application/xml", "application/pdf",
-                    "application/javascript", "application/octet-stream",
-                    "image/png", "image/jpeg", "image/gif", "image/svg+xml",
-                    "audio/mpeg", "audio/wav", "video/mp4", "video/webm",
+                    "text/plain",
+                    "text/html",
+                    "text/css",
+                    "text/csv",
+                    "application/json",
+                    "application/xml",
+                    "application/pdf",
+                    "application/javascript",
+                    "application/octet-stream",
+                    "image/png",
+                    "image/jpeg",
+                    "image/gif",
+                    "image/svg+xml",
+                    "audio/mpeg",
+                    "audio/wav",
+                    "video/mp4",
+                    "video/webm",
                     "multipart/form-data",
                 ];
                 Ok(types[self.rng.gen_range(0..types.len())].to_string())
@@ -1287,17 +1598,13 @@ impl Generator {
             ("scientific", "dna_sequence") => {
                 let len = self.rng.gen_range(8..30);
                 let bases = ['A', 'T', 'G', 'C'];
-                let seq: String = (0..len)
-                    .map(|_| bases[self.rng.gen_range(0..4)])
-                    .collect();
+                let seq: String = (0..len).map(|_| bases[self.rng.gen_range(0..4)]).collect();
                 Ok(seq)
             }
             ("scientific", "rna_sequence") => {
                 let len = self.rng.gen_range(8..30);
                 let bases = ['A', 'U', 'G', 'C'];
-                let seq: String = (0..len)
-                    .map(|_| bases[self.rng.gen_range(0..4)])
-                    .collect();
+                let seq: String = (0..len).map(|_| bases[self.rng.gen_range(0..4)]).collect();
                 Ok(seq)
             }
             ("scientific", "protein_sequence") => {
@@ -1310,23 +1617,23 @@ impl Generator {
             }
             ("scientific", "measurement_unit") => {
                 let units = [
-                    "meter", "kilogram", "second", "ampere", "kelvin", "mole", "candela",
-                    "hertz", "newton", "joule", "watt", "pascal", "liter", "gram",
-                    "m", "kg", "s", "A", "K", "mol", "cd", "Hz", "N", "J", "W", "Pa", "L", "g",
+                    "meter", "kilogram", "second", "ampere", "kelvin", "mole", "candela", "hertz",
+                    "newton", "joule", "watt", "pascal", "liter", "gram", "m", "kg", "s", "A", "K",
+                    "mol", "cd", "Hz", "N", "J", "W", "Pa", "L", "g",
                 ];
                 Ok(units[self.rng.gen_range(0..units.len())].to_string())
             }
             ("scientific", "metric_prefix") => {
                 let prefixes = [
-                    "yotta", "zetta", "exa", "peta", "tera", "giga", "mega", "kilo",
-                    "hecto", "deca", "deci", "centi", "milli", "micro", "nano",
-                    "pico", "femto", "atto",
+                    "yotta", "zetta", "exa", "peta", "tera", "giga", "mega", "kilo", "hecto",
+                    "deca", "deci", "centi", "milli", "micro", "nano", "pico", "femto", "atto",
                 ];
                 Ok(prefixes[self.rng.gen_range(0..prefixes.len())].to_string())
             }
 
             _ => Err(GeneratorError::NotImplemented(format!(
-                "representation.{}.{}", category, type_name
+                "representation.{}.{}",
+                category, type_name
             ))),
         }
     }
@@ -1335,11 +1642,7 @@ impl Generator {
     // DOMAIN: container (11 types)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    fn gen_container(
-        &mut self,
-        category: &str,
-        type_name: &str,
-    ) -> Result<String, GeneratorError> {
+    fn gen_container(&mut self, category: &str, type_name: &str) -> Result<String, GeneratorError> {
         match (category, type_name) {
             // ── object (5 types) ─────────────────────────────────────────
             ("object", "json") => {
@@ -1502,7 +1805,10 @@ impl Generator {
                 let fields = [
                     ("username", self.random_first_name().to_lowercase()),
                     ("email", format!("{}@example.com", self.random_word())),
-                    ("password", format!("pass{}", self.rng.gen_range(1000..9999))),
+                    (
+                        "password",
+                        format!("pass{}", self.rng.gen_range(1000..9999)),
+                    ),
                 ];
                 let count = self.rng.gen_range(2..=3);
                 let pairs: Vec<String> = fields[..count]
@@ -1513,7 +1819,8 @@ impl Generator {
             }
 
             _ => Err(GeneratorError::NotImplemented(format!(
-                "container.{}.{}", category, type_name
+                "container.{}.{}",
+                category, type_name
             ))),
         }
     }
@@ -1551,7 +1858,11 @@ impl Generator {
             .enumerate()
             .map(|(i, b)| {
                 let d = (b - b'0') as u32;
-                if i % 2 == 0 { d } else { d * 3 }
+                if i % 2 == 0 {
+                    d
+                } else {
+                    d * 3
+                }
             })
             .sum();
         ((10 - (sum % 10)) % 10) as u8
@@ -1578,18 +1889,14 @@ impl Generator {
 
     fn random_word(&mut self) -> String {
         let words = [
-            "apple", "banana", "cherry", "data", "engine", "format",
-            "graph", "hash", "index", "join", "kernel", "lambda",
-            "matrix", "node", "object", "parse", "query", "route",
-            "schema", "table", "union", "value", "widget", "xenon",
-            "yield", "zone", "alpha", "beta", "gamma", "delta",
-            "echo", "foxtrot", "golf", "hotel", "india", "juliet",
-            "kilo", "lima", "mike", "november", "oscar", "papa",
-            "quebec", "romeo", "sierra", "tango", "uniform", "victor",
-            "whiskey", "xray", "yankee", "zulu", "red", "blue",
-            "green", "orange", "purple", "silver", "golden", "dark",
-            "light", "fast", "slow", "big", "small", "new", "old",
-            "north", "south", "east", "west", "spring", "summer",
+            "apple", "banana", "cherry", "data", "engine", "format", "graph", "hash", "index",
+            "join", "kernel", "lambda", "matrix", "node", "object", "parse", "query", "route",
+            "schema", "table", "union", "value", "widget", "xenon", "yield", "zone", "alpha",
+            "beta", "gamma", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliet",
+            "kilo", "lima", "mike", "november", "oscar", "papa", "quebec", "romeo", "sierra",
+            "tango", "uniform", "victor", "whiskey", "xray", "yankee", "zulu", "red", "blue",
+            "green", "orange", "purple", "silver", "golden", "dark", "light", "fast", "slow",
+            "big", "small", "new", "old", "north", "south", "east", "west", "spring", "summer",
             "autumn", "winter", "sun", "moon", "star", "cloud",
         ];
         words[self.rng.gen_range(0..words.len())].to_string()
@@ -1597,29 +1904,109 @@ impl Generator {
 
     fn random_first_name(&mut self) -> String {
         let names = [
-            "James", "Mary", "Robert", "Patricia", "John", "Jennifer",
-            "Michael", "Linda", "David", "Elizabeth", "William", "Barbara",
-            "Richard", "Susan", "Joseph", "Jessica", "Thomas", "Sarah",
-            "Charles", "Karen", "Christopher", "Lisa", "Daniel", "Nancy",
-            "Matthew", "Betty", "Anthony", "Margaret", "Mark", "Sandra",
-            "Alexander", "Emily", "Benjamin", "Hannah", "Samuel", "Olivia",
-            "Sophie", "Charlotte", "Amelia", "Mia", "Ava", "Grace",
-            "Lucas", "Ethan", "Noah", "Oliver", "Liam", "Mason",
+            "James",
+            "Mary",
+            "Robert",
+            "Patricia",
+            "John",
+            "Jennifer",
+            "Michael",
+            "Linda",
+            "David",
+            "Elizabeth",
+            "William",
+            "Barbara",
+            "Richard",
+            "Susan",
+            "Joseph",
+            "Jessica",
+            "Thomas",
+            "Sarah",
+            "Charles",
+            "Karen",
+            "Christopher",
+            "Lisa",
+            "Daniel",
+            "Nancy",
+            "Matthew",
+            "Betty",
+            "Anthony",
+            "Margaret",
+            "Mark",
+            "Sandra",
+            "Alexander",
+            "Emily",
+            "Benjamin",
+            "Hannah",
+            "Samuel",
+            "Olivia",
+            "Sophie",
+            "Charlotte",
+            "Amelia",
+            "Mia",
+            "Ava",
+            "Grace",
+            "Lucas",
+            "Ethan",
+            "Noah",
+            "Oliver",
+            "Liam",
+            "Mason",
         ];
         names[self.rng.gen_range(0..names.len())].to_string()
     }
 
     fn random_last_name(&mut self) -> String {
         let names = [
-            "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia",
-            "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez",
-            "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas",
-            "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez",
-            "Thompson", "White", "Harris", "Sanchez", "Clark",
-            "Ramirez", "Lewis", "Robinson", "Walker", "Young",
-            "Allen", "King", "Wright", "Scott", "Torres", "Nguyen",
-            "Hill", "Flores", "Green", "Adams", "Nelson", "Baker",
-            "Hall", "Rivera", "Campbell", "Mitchell", "Carter",
+            "Smith",
+            "Johnson",
+            "Williams",
+            "Brown",
+            "Jones",
+            "Garcia",
+            "Miller",
+            "Davis",
+            "Rodriguez",
+            "Martinez",
+            "Hernandez",
+            "Lopez",
+            "Gonzalez",
+            "Wilson",
+            "Anderson",
+            "Thomas",
+            "Taylor",
+            "Moore",
+            "Jackson",
+            "Martin",
+            "Lee",
+            "Perez",
+            "Thompson",
+            "White",
+            "Harris",
+            "Sanchez",
+            "Clark",
+            "Ramirez",
+            "Lewis",
+            "Robinson",
+            "Walker",
+            "Young",
+            "Allen",
+            "King",
+            "Wright",
+            "Scott",
+            "Torres",
+            "Nguyen",
+            "Hill",
+            "Flores",
+            "Green",
+            "Adams",
+            "Nelson",
+            "Baker",
+            "Hall",
+            "Rivera",
+            "Campbell",
+            "Mitchell",
+            "Carter",
         ];
         names[self.rng.gen_range(0..names.len())].to_string()
     }
@@ -1701,7 +2088,9 @@ test.test.test:
     #[test]
     fn test_representation_integer() {
         let mut gen = Generator::with_seed(test_taxonomy(), 42);
-        let val = gen.generate_value("representation.numeric.integer_number").unwrap();
+        let val = gen
+            .generate_value("representation.numeric.integer_number")
+            .unwrap();
         let _: i64 = val.parse().unwrap();
     }
 
@@ -1723,7 +2112,9 @@ test.test.test:
     #[test]
     fn test_container_query_string() {
         let mut gen = Generator::with_seed(test_taxonomy(), 42);
-        let val = gen.generate_value("container.key_value.query_string").unwrap();
+        let val = gen
+            .generate_value("container.key_value.query_string")
+            .unwrap();
         assert!(val.contains('='));
         assert!(val.contains('&'));
     }
@@ -1736,7 +2127,9 @@ test.test.test:
         assert!(gen.generate_value("technology.internet.ip_v4").is_ok());
         assert!(gen.generate_value("identity.person.email").is_ok());
         assert!(gen.generate_value("geography.location.country").is_ok());
-        assert!(gen.generate_value("representation.numeric.integer_number").is_ok());
+        assert!(gen
+            .generate_value("representation.numeric.integer_number")
+            .is_ok());
         assert!(gen.generate_value("container.object.json").is_ok());
     }
 
@@ -1750,7 +2143,9 @@ test.test.test:
     fn test_credit_card_luhn_valid() {
         let mut gen = Generator::with_seed(test_taxonomy(), 42);
         for _ in 0..100 {
-            let val = gen.generate_value("identity.payment.credit_card_number").unwrap();
+            let val = gen
+                .generate_value("identity.payment.credit_card_number")
+                .unwrap();
             // Verify Luhn validity
             assert!(
                 luhn::valid(&val),
@@ -1780,11 +2175,7 @@ test.test.test:
         for _ in 0..100 {
             let val = gen.generate_value("technology.code.imei").unwrap();
             assert_eq!(val.len(), 15, "IMEI should be 15 digits: {}", val);
-            assert!(
-                luhn::valid(&val),
-                "IMEI {} failed Luhn check",
-                val
-            );
+            assert!(luhn::valid(&val), "IMEI {} failed Luhn check", val);
         }
     }
 
@@ -1807,7 +2198,11 @@ test.test.test:
                     .enumerate()
                     .map(|(i, b)| {
                         let d = (b - b'0') as u32;
-                        if i % 2 == 0 { d } else { d * 3 }
+                        if i % 2 == 0 {
+                            d
+                        } else {
+                            d * 3
+                        }
                     })
                     .sum();
                 ((10 - (sum % 10)) % 10) as u8
@@ -1829,12 +2224,26 @@ test.test.test:
         let mut saw_amex = false;
         let mut saw_discover = false;
         for _ in 0..200 {
-            let val = gen.generate_value("identity.payment.credit_card_number").unwrap();
-            if val.starts_with('4') && val.len() == 16 { saw_visa = true; }
-            if val.starts_with("51") || val.starts_with("52") || val.starts_with("53")
-                || val.starts_with("54") || val.starts_with("55") { saw_mc = true; }
-            if val.starts_with("34") || val.starts_with("37") { saw_amex = true; }
-            if val.starts_with("6011") { saw_discover = true; }
+            let val = gen
+                .generate_value("identity.payment.credit_card_number")
+                .unwrap();
+            if val.starts_with('4') && val.len() == 16 {
+                saw_visa = true;
+            }
+            if val.starts_with("51")
+                || val.starts_with("52")
+                || val.starts_with("53")
+                || val.starts_with("54")
+                || val.starts_with("55")
+            {
+                saw_mc = true;
+            }
+            if val.starts_with("34") || val.starts_with("37") {
+                saw_amex = true;
+            }
+            if val.starts_with("6011") {
+                saw_discover = true;
+            }
         }
         assert!(saw_visa, "Should generate Visa cards");
         assert!(saw_mc, "Should generate Mastercard cards");
@@ -1850,7 +2259,11 @@ test.test.test:
         for _ in 0..total {
             let val = gen.generate_value("identity.person.phone_number").unwrap();
             // All generated numbers should start with +
-            assert!(val.starts_with('+'), "Phone number should start with +: {}", val);
+            assert!(
+                val.starts_with('+'),
+                "Phone number should start with +: {}",
+                val
+            );
             // Parse with phonenumber crate (None = auto-detect country from + prefix)
             if let Ok(number) = phonenumber::parse(None, &val) {
                 if phonenumber::is_valid(&number) {
@@ -1863,7 +2276,9 @@ test.test.test:
         assert!(
             valid_pct >= 80.0,
             "Only {:.0}% of phone numbers passed validation ({}/{})",
-            valid_pct, valid_count, total
+            valid_pct,
+            valid_count,
+            total
         );
     }
 
@@ -1878,12 +2293,24 @@ test.test.test:
         let mut saw_es = false;
         for _ in 0..200 {
             let val = gen.generate_value("identity.person.phone_number").unwrap();
-            if val.starts_with("+1") { saw_us = true; }
-            if val.starts_with("+44") { saw_gb = true; }
-            if val.starts_with("+61") { saw_au = true; }
-            if val.starts_with("+49") { saw_de = true; }
-            if val.starts_with("+33") { saw_fr = true; }
-            if val.starts_with("+34") { saw_es = true; }
+            if val.starts_with("+1") {
+                saw_us = true;
+            }
+            if val.starts_with("+44") {
+                saw_gb = true;
+            }
+            if val.starts_with("+61") {
+                saw_au = true;
+            }
+            if val.starts_with("+49") {
+                saw_de = true;
+            }
+            if val.starts_with("+33") {
+                saw_fr = true;
+            }
+            if val.starts_with("+34") {
+                saw_es = true;
+            }
         }
         assert!(saw_us, "Should generate US numbers");
         assert!(saw_gb, "Should generate GB numbers");

@@ -31,10 +31,11 @@ pub enum TaxonomyError {
 }
 
 /// Designation indicates the scope and stability of a label.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Designation {
     /// Universal format, works across all locales
+    #[default]
     Universal,
     /// Locale-specific format
     LocaleSpecific,
@@ -46,12 +47,6 @@ pub enum Designation {
     BroadWords,
     /// Broad category - objects/structured data
     BroadObject,
-}
-
-impl Default for Designation {
-    fn default() -> Self {
-        Designation::Universal
-    }
 }
 
 /// JSON Schema validation fragment.
@@ -143,7 +138,10 @@ impl Label {
 
     /// Get the full label with locale
     pub fn with_locale(&self, locale: &str) -> String {
-        format!("{}.{}.{}.{}", self.domain, self.category, self.type_name, locale)
+        format!(
+            "{}.{}.{}.{}",
+            self.domain, self.category, self.type_name, locale
+        )
     }
 }
 

@@ -161,9 +161,7 @@ impl CheckReport {
     pub fn by_domain(&self) -> BTreeMap<String, Vec<&DefinitionCheckResult>> {
         let mut map: BTreeMap<String, Vec<&DefinitionCheckResult>> = BTreeMap::new();
         for result in &self.results {
-            map.entry(result.domain.clone())
-                .or_default()
-                .push(result);
+            map.entry(result.domain.clone()).or_default().push(result);
         }
         map
     }
@@ -391,18 +389,27 @@ pub fn format_report(report: &CheckReport, verbose: bool) -> String {
 
     // Summary
     out.push_str("SUMMARY\n");
-    out.push_str(&format!("  Generators found:  {}/{}\n", report.generators_found, report.total_definitions));
-    out.push_str(&format!("  Generators missing: {}\n", report.generators_missing));
+    out.push_str(&format!(
+        "  Generators found:  {}/{}\n",
+        report.generators_found, report.total_definitions
+    ));
+    out.push_str(&format!(
+        "  Generators missing: {}\n",
+        report.generators_missing
+    ));
     out.push_str(&format!("  Fully passing:     {}\n", report.fully_passing));
     out.push_str(&format!("  Has failures:      {}\n", report.has_failures));
-    out.push_str(&format!("  No pattern:        {} (untestable)\n", report.no_pattern));
+    out.push_str(&format!(
+        "  No pattern:        {} (untestable)\n",
+        report.no_pattern
+    ));
     out.push_str(&format!(
         "  Samples:           {}/{} passed ({:.1}%)\n",
         report.total_passed,
         report.total_samples,
         report.pass_rate() * 100.0
     ));
-    out.push_str("\n");
+    out.push('\n');
 
     // Per-domain summary
     out.push_str("BY DOMAIN\n");
@@ -410,7 +417,11 @@ pub fn format_report(report: &CheckReport, verbose: bool) -> String {
         let total = results.len();
         let passing = results.iter().filter(|r| r.passed()).count();
         let missing = results.iter().filter(|r| !r.generator_exists).count();
-        let marker = if passing == total { "\u{2705}" } else { "\u{274c}" };
+        let marker = if passing == total {
+            "\u{2705}"
+        } else {
+            "\u{274c}"
+        };
         out.push_str(&format!(
             "  {} {:20} {}/{} passing",
             marker, domain, passing, total,
@@ -418,19 +429,25 @@ pub fn format_report(report: &CheckReport, verbose: bool) -> String {
         if missing > 0 {
             out.push_str(&format!(" ({} missing generators)", missing));
         }
-        out.push_str("\n");
+        out.push('\n');
     }
-    out.push_str("\n");
+    out.push('\n');
 
     // Missing generators
-    let missing: Vec<&DefinitionCheckResult> =
-        report.results.iter().filter(|r| !r.generator_exists).collect();
+    let missing: Vec<&DefinitionCheckResult> = report
+        .results
+        .iter()
+        .filter(|r| !r.generator_exists)
+        .collect();
     if !missing.is_empty() {
         out.push_str(&format!("MISSING GENERATORS ({})\n", missing.len()));
         for r in &missing {
-            out.push_str(&format!("  - {} (priority: {})\n", r.key, r.release_priority));
+            out.push_str(&format!(
+                "  - {} (priority: {})\n",
+                r.key, r.release_priority
+            ));
         }
-        out.push_str("\n");
+        out.push('\n');
     }
 
     // Validation failures
@@ -456,14 +473,11 @@ pub fn format_report(report: &CheckReport, verbose: bool) -> String {
                     } else {
                         failure.sample.clone()
                     };
-                    out.push_str(&format!(
-                        "    {:?} -> {}\n",
-                        sample_display, failure.reason
-                    ));
+                    out.push_str(&format!("    {:?} -> {}\n", sample_display, failure.reason));
                 }
             }
         }
-        out.push_str("\n");
+        out.push('\n');
     }
 
     // Untestable (no validation pattern)
@@ -476,9 +490,12 @@ pub fn format_report(report: &CheckReport, verbose: bool) -> String {
         if !no_pattern.is_empty() {
             out.push_str(&format!("NO VALIDATION PATTERN ({})\n", no_pattern.len()));
             for r in &no_pattern {
-                out.push_str(&format!("  - {} (priority: {})\n", r.key, r.release_priority));
+                out.push_str(&format!(
+                    "  - {} (priority: {})\n",
+                    r.key, r.release_priority
+                ));
             }
-            out.push_str("\n");
+            out.push('\n');
         }
     }
 

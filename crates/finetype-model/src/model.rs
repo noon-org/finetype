@@ -51,18 +51,18 @@ pub struct TransformerEncoderLayer {
 impl TransformerEncoderLayer {
     pub fn new(d_model: usize, n_heads: usize, vb: VarBuilder) -> Result<Self> {
         let _head_dim = d_model / n_heads;
-        
+
         let self_attn_q = linear(d_model, d_model, vb.pp("self_attn_q"))?;
         let self_attn_k = linear(d_model, d_model, vb.pp("self_attn_k"))?;
         let self_attn_v = linear(d_model, d_model, vb.pp("self_attn_v"))?;
         let self_attn_out = linear(d_model, d_model, vb.pp("self_attn_out"))?;
-        
+
         let ff1 = linear(d_model, d_model * 4, vb.pp("ff1"))?;
         let ff2 = linear(d_model * 4, d_model, vb.pp("ff2"))?;
-        
+
         let ln1 = candle_nn::layer_norm(d_model, 1e-5, vb.pp("ln1"))?;
         let ln2 = candle_nn::layer_norm(d_model, 1e-5, vb.pp("ln2"))?;
-        
+
         Ok(Self {
             self_attn_q,
             self_attn_k,
@@ -80,47 +80,57 @@ impl TransformerEncoderLayer {
     pub fn forward(&self, x: &Tensor, mask: Option<&Tensor>) -> Result<Tensor> {
         let (batch_size, seq_len, _) = x.dims3()?;
         let head_dim = self.d_model / self.n_heads;
-        
+
         // Self-attention
         let q = self.self_attn_q.forward(x)?;
         let k = self.self_attn_k.forward(x)?;
         let v = self.self_attn_v.forward(x)?;
-        
+
         // Reshape for multi-head attention
-        let q = q.reshape((batch_size, seq_len, self.n_heads, head_dim))?.transpose(1, 2)?.contiguous()?;
-        let k = k.reshape((batch_size, seq_len, self.n_heads, head_dim))?.transpose(1, 2)?.contiguous()?;
-        let v = v.reshape((batch_size, seq_len, self.n_heads, head_dim))?.transpose(1, 2)?.contiguous()?;
-        
+        let q = q
+            .reshape((batch_size, seq_len, self.n_heads, head_dim))?
+            .transpose(1, 2)?
+            .contiguous()?;
+        let k = k
+            .reshape((batch_size, seq_len, self.n_heads, head_dim))?
+            .transpose(1, 2)?
+            .contiguous()?;
+        let v = v
+            .reshape((batch_size, seq_len, self.n_heads, head_dim))?
+            .transpose(1, 2)?
+            .contiguous()?;
+
         // Scaled dot-product attention
         let scale = (head_dim as f64).sqrt();
         let k_t = k.transpose(2, 3)?.contiguous()?;
         let attn_weights = (q.matmul(&k_t)? / scale)?;
-        
+
         // Note: Mask handling simplified for initial implementation
         // TODO: Implement proper attention masking
         let _ = mask; // Suppress unused warning
-        
+
         let attn_weights = candle_nn::ops::softmax(&attn_weights, 3)?;
         let attn_output = attn_weights.matmul(&v)?;
-        
+
         // Reshape back
-        let attn_output = attn_output
-            .transpose(1, 2)?
-            .contiguous()?
-            .reshape((batch_size, seq_len, self.d_model))?;
+        let attn_output = attn_output.transpose(1, 2)?.contiguous()?.reshape((
+            batch_size,
+            seq_len,
+            self.d_model,
+        ))?;
         let attn_output = self.self_attn_out.forward(&attn_output)?;
-        
+
         // Residual + LayerNorm
         let x = self.ln1.forward(&(x + attn_output)?)?;
-        
+
         // Feed-forward
         let ff_output = self.ff1.forward(&x)?;
         let ff_output = ff_output.gelu_erf()?;
         let ff_output = self.ff2.forward(&ff_output)?;
-        
+
         // Residual + LayerNorm
         let x = self.ln2.forward(&(&x + ff_output)?)?;
-        
+
         Ok(x)
     }
 }
@@ -138,8 +148,9 @@ impl TextClassifier {
     /// Create a new text classifier.
     pub fn new(config: TextClassifierConfig, vb: VarBuilder) -> Result<Self> {
         let token_embedding = embedding(config.vocab_size, config.d_model, vb.pp("token_emb"))?;
-        let position_embedding = embedding(config.max_seq_length, config.d_model, vb.pp("pos_emb"))?;
-        
+        let position_embedding =
+            embedding(config.max_seq_length, config.d_model, vb.pp("pos_emb"))?;
+
         let mut encoder_layers = Vec::with_capacity(config.n_layers);
         for i in 0..config.n_layers {
             let layer = TransformerEncoderLayer::new(
@@ -149,9 +160,9 @@ impl TextClassifier {
             )?;
             encoder_layers.push(layer);
         }
-        
+
         let classifier = linear(config.d_model, config.n_classes, vb.pp("classifier"))?;
-        
+
         Ok(Self {
             token_embedding,
             position_embedding,
@@ -165,31 +176,31 @@ impl TextClassifier {
     pub fn forward(&self, input_ids: &Tensor, attention_mask: Option<&Tensor>) -> Result<Tensor> {
         let (batch_size, seq_len) = input_ids.dims2()?;
         let device = input_ids.device();
-        
+
         // Token embeddings
         let token_emb = self.token_embedding.forward(input_ids)?;
-        
+
         // Position embeddings
         let positions = Tensor::arange(0u32, seq_len as u32, device)?
             .unsqueeze(0)?
             .expand((batch_size, seq_len))?;
         let pos_emb = self.position_embedding.forward(&positions)?;
-        
+
         // Combine embeddings
         let mut hidden = (token_emb + pos_emb)?;
         hidden = (hidden / 2.0)?; // Average as in original
-        
+
         // Apply encoder layers
         for layer in &self.encoder_layers {
             hidden = layer.forward(&hidden, attention_mask)?;
         }
-        
+
         // Take CLS token (first position) for classification
         let cls_output = hidden.narrow(1, 0, 1)?.squeeze(1)?.contiguous()?;
-        
+
         // Classification head
         let logits = self.classifier.forward(&cls_output)?.contiguous()?;
-        
+
         Ok(logits)
     }
 

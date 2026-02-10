@@ -4,7 +4,7 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use finetype_core::{Checker, Generator, Taxonomy, format_report};
+use finetype_core::{format_report, Checker, Generator, Taxonomy};
 use finetype_model::Classifier;
 use serde_json::json;
 use std::io::{self, BufRead, Write};
@@ -234,7 +234,9 @@ fn main() -> Result<()> {
             batch_size,
             device,
             model_type,
-        } => cmd_train(data, taxonomy, output, epochs, batch_size, device, model_type),
+        } => cmd_train(
+            data, taxonomy, output, epochs, batch_size, device, model_type,
+        ),
 
         Commands::Taxonomy {
             file,
@@ -289,7 +291,7 @@ fn cmd_infer(
         io::stdin()
             .lock()
             .lines()
-            .filter_map(|l| l.ok())
+            .map_while(|l| l.ok())
             .filter(|s| !s.is_empty())
             .collect()
     };
@@ -613,11 +615,7 @@ fn cmd_check(
             let results: Vec<serde_json::Value> = report
                 .results
                 .iter()
-                .filter(|r| {
-                    priority
-                        .map(|p| r.release_priority >= p)
-                        .unwrap_or(true)
-                })
+                .filter(|r| priority.map(|p| r.release_priority >= p).unwrap_or(true))
                 .map(|r| {
                     let mut obj = serde_json::Map::new();
                     obj.insert("key".to_string(), json!(r.key));
@@ -739,7 +737,7 @@ fn cmd_eval(
             let batch_size = 128;
             let texts: Vec<String> = test_samples.iter().map(|(t, _)| t.clone()).collect();
             for chunk in texts.chunks(batch_size) {
-                let batch_results = classifier.classify_batch(&chunk.to_vec())?;
+                let batch_results = classifier.classify_batch(chunk)?;
                 predictions.extend(batch_results);
             }
         }
@@ -750,7 +748,7 @@ fn cmd_eval(
             let batch_size = 32;
             let texts: Vec<String> = test_samples.iter().map(|(t, _)| t.clone()).collect();
             for chunk in texts.chunks(batch_size) {
-                let batch_results = classifier.classify_batch(&chunk.to_vec())?;
+                let batch_results = classifier.classify_batch(chunk)?;
                 predictions.extend(batch_results);
             }
         }
@@ -842,19 +840,23 @@ fn cmd_eval(
             println!();
             println!("OVERALL");
             println!("  Samples:        {}", total);
-            println!("  Accuracy:       {:.2}% ({}/{})", accuracy * 100.0, correct, total);
+            println!(
+                "  Accuracy:       {:.2}% ({}/{})",
+                accuracy * 100.0,
+                correct,
+                total
+            );
             println!(
                 "  Top-3 Accuracy: {:.2}% ({}/{})",
-                top3_accuracy * 100.0, top3_correct, total
+                top3_accuracy * 100.0,
+                top3_correct,
+                total
             );
             println!(
                 "  Avg confidence (correct):   {:.4}",
                 avg_confidence_correct
             );
-            println!(
-                "  Avg confidence (incorrect): {:.4}",
-                avg_confidence_wrong
-            );
+            println!("  Avg confidence (incorrect): {:.4}", avg_confidence_wrong);
             println!();
 
             // Per-class metrics
