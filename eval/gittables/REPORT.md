@@ -79,7 +79,7 @@ Year disambiguation was added to resolve the single largest misclassification pa
 
 | Metric | Row-Mode | Column-Mode | Improvement |
 |---|---|---|---|
-| Year columns (n=102) accuracy | **15.7%** (16/102) | **27.5%** (28/102) | **+11.8%** |
+| Year columns (n=102) accuracy | **15.7%** (16/102) | **28.4%** (29/102) | **+12.7%** |
 
 ### Prediction distribution for year columns
 
@@ -87,7 +87,7 @@ Year disambiguation was added to resolve the single largest misclassification pa
 |---|---|---|
 | `representation.numeric.decimal_number` | 45.1% | 45.1% |
 | `geography.address.street_number` | 34.3% | **1.0%** |
-| `datetime.component.year` | 15.7% | **27.5%** |
+| `datetime.component.year` | 15.7% | **28.4%** |
 | `geography.address.postal_code` | — | 18.6% |
 | `technology.development.calver` | 4.9% | 4.9% |
 | `representation.numeric.increment` | — | 2.9% |
@@ -96,15 +96,15 @@ Year disambiguation was added to resolve the single largest misclassification pa
 
 ## Disambiguation Rules Applied
 
-150 of 2,363 columns (6.3%) had a disambiguation rule override the majority vote:
+152 of 2,363 columns (6.4%) had a disambiguation rule override the majority vote:
 
 | Rule | Columns |
 |---|---|
-| `numeric_sequential_detection` | 74 |
-| `numeric_year_detection` | 29 |
+| `numeric_sequential_detection` | 75 |
+| `numeric_year_detection` | 30 |
 | `numeric_postal_code_detection` | 27 |
-| `numeric_street_number_detection` | 10 |
-| `numeric_port_detection` | 6 |
+| `numeric_street_number_detection` | 11 |
+| `numeric_port_detection` | 5 |
 | `coordinate_disambiguation` | 2 |
 | `date_slash_disambiguation` | 2 |
 
@@ -146,7 +146,7 @@ Column-mode correctly detects sequential integer ID columns as `representation.n
 
 FineType excels at **format-detectable types** — URLs (96%), timestamps (100%), dates (88%), country names (100%), person names (80%). The model correctly identifies data formats even when semantic context would assign a different label.
 
-Column-mode inference adds measurable value for **geography** (+9.7%) and **datetime** (+4.8%) through disambiguation rules, achieving a net **+0.3%** overall improvement over row-mode. The biggest single improvement is year detection: **15.7% → 27.5%** accuracy on 102 year columns.
+Column-mode inference adds measurable value for **geography** (+9.7%) and **datetime** (+4.8%) through disambiguation rules, achieving a net **+0.3%** overall improvement over row-mode. The biggest single improvement is year detection: **15.7% → 28.4%** accuracy on 102 year columns.
 
 The ~48% overall domain accuracy reflects the fundamental difference between format detection (FineType's goal) and semantic type annotation (GitTables' labels). For the subset of types where format implies semantics, FineType achieves **85-100% accuracy on real-world data**, closely matching its 91.97% synthetic accuracy.
 
