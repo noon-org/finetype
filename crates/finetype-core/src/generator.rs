@@ -374,7 +374,7 @@ impl Generator {
             }
 
             // ── component (6 types) ──────────────────────────────────────
-            ("component", "year") => Ok(self.rng.gen_range(1990..2030).to_string()),
+            ("component", "year") => Ok(self.rng.gen_range(1800..2100).to_string()),
             ("component", "month_name") => {
                 let months = locale_data::month_names(self.current_locale());
                 Ok(months[self.rng.gen_range(0..months.len())].to_string())
