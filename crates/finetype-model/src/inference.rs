@@ -529,6 +529,47 @@ fn post_process(result: &mut ClassificationResult, text: &str) {
             result.label = "representation.text.emoji".to_string();
         }
     }
+
+    // Rule 4: ISSN vs postal_code
+    //
+    // ISSN has a distinctive format: XXXX-XXX[0-9X] (4 digits, hyphen, 3 digits, check char).
+    // Postal codes are typically 5 digits (ZIP), 5-4 (ZIP+4), or other country formats.
+    // The model confuses these bidirectionally (24x issn→postal, 23x postal→issn).
+    // A regex-free pattern check on the hyphenated format resolves this.
+    if result.label == "technology.code.issn"
+        || result.label == "geography.address.postal_code"
+    {
+        let trimmed = text.trim();
+        let bytes = trimmed.as_bytes();
+        // ISSN pattern: exactly 9 chars, format DDDD-DDD[DX]
+        let is_issn = bytes.len() == 9
+            && bytes[4] == b'-'
+            && bytes[..4].iter().all(|b| b.is_ascii_digit())
+            && bytes[5..8].iter().all(|b| b.is_ascii_digit())
+            && (bytes[8].is_ascii_digit() || bytes[8] == b'X');
+        if is_issn {
+            result.label = "technology.code.issn".to_string();
+        } else {
+            result.label = "geography.address.postal_code".to_string();
+        }
+    }
+
+    // Rule 5: longitude vs latitude (partial)
+    //
+    // Latitude is bounded to -90..+90, longitude to -180..+180.
+    // If a value's absolute magnitude exceeds 90, it's definitively longitude.
+    // Values within ±90 remain as the model predicted (ambiguous at single-value level).
+    // The model confuses these (30x lon→lat, 21x lat→lon).
+    if result.label == "geography.coordinate.latitude"
+        || result.label == "geography.coordinate.longitude"
+    {
+        let trimmed = text.trim();
+        if let Ok(val) = trimmed.parse::<f64>() {
+            if val.abs() > 90.0 {
+                result.label = "geography.coordinate.longitude".to_string();
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -693,5 +734,99 @@ mod post_process_tests {
         let mut result = make_result("identity.person.gender_symbol");
         post_process(&mut result, "♂");
         assert_eq!(result.label, "identity.person.gender_symbol");
+    }
+
+    // ── Rule 4: ISSN vs postal_code ──────────────────────────────────────────
+
+    #[test]
+    fn test_issn_format_corrects_postal_code() {
+        let mut result = make_result("geography.address.postal_code");
+        post_process(&mut result, "0028-0836");
+        assert_eq!(result.label, "technology.code.issn");
+    }
+
+    #[test]
+    fn test_issn_with_x_check_digit() {
+        let mut result = make_result("geography.address.postal_code");
+        post_process(&mut result, "1234-567X");
+        assert_eq!(result.label, "technology.code.issn");
+    }
+
+    #[test]
+    fn test_postal_code_zip5_corrects_issn() {
+        let mut result = make_result("technology.code.issn");
+        post_process(&mut result, "58763");
+        assert_eq!(result.label, "geography.address.postal_code");
+    }
+
+    #[test]
+    fn test_postal_code_zip_plus_4() {
+        let mut result = make_result("technology.code.issn");
+        post_process(&mut result, "79262-7606");
+        // 10 chars (5-4), not ISSN format (4-3+check = 9 chars)
+        assert_eq!(result.label, "geography.address.postal_code");
+    }
+
+    #[test]
+    fn test_correct_issn_unchanged() {
+        let mut result = make_result("technology.code.issn");
+        post_process(&mut result, "5019-8538");
+        assert_eq!(result.label, "technology.code.issn");
+    }
+
+    #[test]
+    fn test_correct_postal_code_unchanged() {
+        let mut result = make_result("geography.address.postal_code");
+        post_process(&mut result, "55502");
+        assert_eq!(result.label, "geography.address.postal_code");
+    }
+
+    // ── Rule 5: longitude vs latitude ────────────────────────────────────────
+
+    #[test]
+    fn test_longitude_outside_latitude_range() {
+        let mut result = make_result("geography.coordinate.latitude");
+        post_process(&mut result, "170.0522");
+        // >90 → definitively longitude
+        assert_eq!(result.label, "geography.coordinate.longitude");
+    }
+
+    #[test]
+    fn test_negative_longitude_outside_latitude_range() {
+        let mut result = make_result("geography.coordinate.latitude");
+        post_process(&mut result, "-138.9274");
+        // abs > 90 → definitively longitude
+        assert_eq!(result.label, "geography.coordinate.longitude");
+    }
+
+    #[test]
+    fn test_value_within_latitude_range_unchanged() {
+        // 40.7128 is within ±90, so prediction stays as-is
+        let mut result = make_result("geography.coordinate.latitude");
+        post_process(&mut result, "40.7128");
+        assert_eq!(result.label, "geography.coordinate.latitude");
+    }
+
+    #[test]
+    fn test_longitude_within_range_stays_longitude() {
+        // -58.0804 is within ±90, but predicted as longitude — stays
+        let mut result = make_result("geography.coordinate.longitude");
+        post_process(&mut result, "-58.0804");
+        assert_eq!(result.label, "geography.coordinate.longitude");
+    }
+
+    #[test]
+    fn test_exactly_90_stays_as_predicted() {
+        // Exactly 90.0 is valid latitude, should not change
+        let mut result = make_result("geography.coordinate.latitude");
+        post_process(&mut result, "90.0");
+        assert_eq!(result.label, "geography.coordinate.latitude");
+    }
+
+    #[test]
+    fn test_just_over_90_becomes_longitude() {
+        let mut result = make_result("geography.coordinate.latitude");
+        post_process(&mut result, "90.001");
+        assert_eq!(result.label, "geography.coordinate.longitude");
     }
 }
