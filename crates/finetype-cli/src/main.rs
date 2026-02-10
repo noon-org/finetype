@@ -224,6 +224,25 @@ enum Commands {
         delimiter: Option<char>,
     },
 
+    /// Evaluate column-mode inference on GitTables benchmark
+    EvalGittables {
+        /// Directory containing GitTables benchmark data
+        #[arg(short, long, default_value = "eval/gittables")]
+        dir: PathBuf,
+
+        /// Model directory
+        #[arg(short, long, default_value = "models/default")]
+        model: PathBuf,
+
+        /// Maximum values to sample per column (default 100)
+        #[arg(long, default_value = "100")]
+        sample_size: usize,
+
+        /// Output format (plain, json)
+        #[arg(short, long, default_value = "plain")]
+        output: OutputFormat,
+    },
+
     /// Evaluate model accuracy on a test set
     Eval {
         /// Test data file (NDJSON with "text" and "classification" fields)
@@ -391,6 +410,13 @@ fn main() -> Result<()> {
             sample_size,
             delimiter,
         } => cmd_profile(file, model, output, sample_size, delimiter),
+
+        Commands::EvalGittables {
+            dir,
+            model,
+            sample_size,
+            output,
+        } => cmd_eval_gittables(dir, model, sample_size, output),
 
         Commands::Eval {
             data,
@@ -1502,6 +1528,574 @@ fn cmd_profile(
                     p.disambiguation_rule.as_deref().unwrap_or("")
                 );
             }
+        }
+    }
+
+    Ok(())
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EVAL-GITTABLES — Column-mode evaluation on GitTables benchmark
+// ═══════════════════════════════════════════════════════════════════════════════
+
+fn cmd_eval_gittables(
+    dir: PathBuf,
+    model: PathBuf,
+    sample_size: usize,
+    output: OutputFormat,
+) -> Result<()> {
+    use finetype_model::{CharClassifier, ColumnClassifier, ColumnConfig};
+    use std::collections::HashMap;
+    use std::time::Instant;
+
+    let start = Instant::now();
+
+    // ── 1. Load model once ──────────────────────────────────────────────────
+    eprintln!("Loading model from {:?}", model);
+    let classifier = CharClassifier::load(&model)?;
+    let config = ColumnConfig {
+        sample_size,
+        ..Default::default()
+    };
+    let column_classifier = ColumnClassifier::new(classifier, config);
+
+    // ── 2. Load ground truth ────────────────────────────────────────────────
+    eprintln!("Loading ground truth from {:?}", dir);
+
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct Annotation {
+        gt_label: String,
+        ontology: String,
+    }
+
+    // Read ground truth CSVs: (table_file, col_idx) -> Annotation
+    let mut ground_truth: HashMap<(String, usize), Annotation> = HashMap::new();
+
+    // Helper to load a GT csv file
+    fn load_gt(
+        path: &std::path::Path,
+        ontology: &str,
+        suffix: &str,
+        gt: &mut HashMap<(String, usize), Annotation>,
+    ) -> Result<usize> {
+        let mut count = 0;
+        let mut reader = csv::ReaderBuilder::new().from_path(path)?;
+        for result in reader.records() {
+            let record = result?;
+            // Columns: (row_number), table_id, target_column, annotation_id, annotation_label
+            let table_id = record.get(1).unwrap_or("");
+            let col_idx: usize = record.get(2).unwrap_or("0").parse().unwrap_or(0);
+            let gt_label = record.get(4).unwrap_or("").to_string();
+
+            // Strip suffix from table_id: GitTables_1501_schema -> GitTables_1501
+            let table_file = table_id.replace(suffix, "");
+
+            gt.entry((table_file, col_idx)).or_insert(Annotation {
+                gt_label,
+                ontology: ontology.to_string(),
+            });
+            count += 1;
+        }
+        Ok(count)
+    }
+
+    // Load schema.org first (preferred), then dbpedia (fills gaps)
+    let schema_path = dir.join("schema_gt.csv");
+    let dbpedia_path = dir.join("dbpedia_gt.csv");
+
+    if schema_path.exists() {
+        let n = load_gt(&schema_path, "schema.org", "_schema", &mut ground_truth)?;
+        eprintln!("  Schema.org: {} annotations", n);
+    }
+    if dbpedia_path.exists() {
+        let n = load_gt(&dbpedia_path, "dbpedia", "_dbpedia", &mut ground_truth)?;
+        eprintln!("  DBpedia: {} annotations (after merge)", n);
+    }
+    eprintln!("  Total unique: {} annotated columns", ground_truth.len());
+
+    // ── 3. Group annotations by table ───────────────────────────────────────
+    let mut tables_to_cols: HashMap<String, Vec<(usize, String)>> = HashMap::new();
+    for ((table_file, col_idx), ann) in &ground_truth {
+        tables_to_cols
+            .entry(table_file.clone())
+            .or_default()
+            .push((*col_idx, ann.gt_label.clone()));
+    }
+    eprintln!("  {} unique tables with annotations", tables_to_cols.len());
+
+    // ── 4. Domain mapping (same as eval.sql) ────────────────────────────────
+    let domain_map: HashMap<&str, &str> = [
+        ("email", "identity"),
+        ("url", "technology"),
+        ("date", "datetime"),
+        ("start date", "datetime"),
+        ("end date", "datetime"),
+        ("start time", "datetime"),
+        ("end time", "datetime"),
+        ("time", "datetime"),
+        ("created", "datetime"),
+        ("updated", "datetime"),
+        ("year", "datetime"),
+        ("postal code", "geography"),
+        ("zip code", "geography"),
+        ("country", "geography"),
+        ("state", "geography"),
+        ("city", "geography"),
+        ("id", "identity"),
+        ("name", "identity"),
+        ("percentage", "numeric"),
+        ("age", "numeric"),
+        ("price", "numeric"),
+        ("weight", "numeric"),
+        ("height", "numeric"),
+        ("depth", "numeric"),
+        ("width", "numeric"),
+        ("length", "numeric"),
+        ("duration", "numeric"),
+        ("gender", "identity"),
+        ("author", "identity"),
+        ("description", "representation"),
+        ("title", "representation"),
+        ("abstract", "representation"),
+        ("comment", "representation"),
+        ("status", "representation"),
+        ("category", "representation"),
+        ("type", "representation"),
+    ]
+    .iter()
+    .copied()
+    .collect();
+
+    // ── 5. Process each table ───────────────────────────────────────────────
+    eprintln!("\nProcessing tables...");
+
+    #[allow(dead_code)]
+    struct ColumnPrediction {
+        table_file: String,
+        col_idx: usize,
+        gt_label: String,
+        row_mode_label: String,
+        column_mode_label: String,
+        disambiguation_applied: bool,
+        disambiguation_rule: Option<String>,
+        n_values: usize,
+    }
+
+    let mut predictions: Vec<ColumnPrediction> = Vec::new();
+    let mut tables_processed = 0;
+    let mut tables_missing = 0;
+
+    let tables_dir = dir.join("tables/tables");
+    let mut table_names: Vec<String> = tables_to_cols.keys().cloned().collect();
+    table_names.sort();
+
+    for table_file in &table_names {
+        let csv_path = tables_dir.join(format!("{}.csv", table_file));
+        if !csv_path.exists() {
+            tables_missing += 1;
+            continue;
+        }
+
+        // Read the CSV
+        let mut reader = csv::ReaderBuilder::new()
+            .flexible(true)
+            .from_path(&csv_path)?;
+
+        let headers: Vec<String> = reader.headers()?.iter().map(|h| h.to_string()).collect();
+
+        // Build header index: "col0" -> 0, "col1" -> 1, etc.
+        // The first column is typically "column00" (row index) which we skip
+        let mut header_to_pos: HashMap<String, usize> = HashMap::new();
+        for (pos, name) in headers.iter().enumerate() {
+            header_to_pos.insert(name.clone(), pos);
+        }
+
+        // Collect all column values
+        let n_cols = headers.len();
+        let mut columns: Vec<Vec<String>> = vec![Vec::new(); n_cols];
+        for result in reader.records() {
+            let record = result?;
+            for (i, field) in record.iter().enumerate() {
+                if i < n_cols {
+                    let trimmed = field.trim();
+                    if !trimmed.is_empty()
+                        && trimmed != "NULL"
+                        && trimmed != "null"
+                        && trimmed != "NA"
+                        && trimmed != "N/A"
+                        && trimmed != "nan"
+                        && trimmed != "NaN"
+                        && trimmed != "None"
+                    {
+                        columns[i].push(trimmed.to_string());
+                    }
+                }
+            }
+        }
+
+        // Process each annotated column
+        let annotated_cols = tables_to_cols.get(table_file).unwrap();
+        for (col_idx, gt_label) in annotated_cols {
+            let col_name = format!("col{}", col_idx);
+            let pos = match header_to_pos.get(&col_name) {
+                Some(p) => *p,
+                None => continue, // Column doesn't exist in this table
+            };
+
+            let col_values = &columns[pos];
+            if col_values.is_empty() {
+                continue;
+            }
+
+            // Row-mode: classify each value independently, take majority vote
+            let batch_results = column_classifier.classifier().classify_batch(col_values)?;
+            let mut vote_counts: HashMap<String, usize> = HashMap::new();
+            for r in &batch_results {
+                *vote_counts.entry(r.label.clone()).or_default() += 1;
+            }
+            let row_mode_label = vote_counts
+                .iter()
+                .max_by_key(|(_, count)| *count)
+                .map(|(label, _)| label.clone())
+                .unwrap_or_else(|| "unknown".to_string());
+
+            // Column-mode: use ColumnClassifier with disambiguation rules
+            let col_result = column_classifier.classify_column(col_values)?;
+
+            predictions.push(ColumnPrediction {
+                table_file: table_file.clone(),
+                col_idx: *col_idx,
+                gt_label: gt_label.clone(),
+                row_mode_label,
+                column_mode_label: col_result.label,
+                disambiguation_applied: col_result.disambiguation_applied,
+                disambiguation_rule: col_result.disambiguation_rule,
+                n_values: col_values.len(),
+            });
+        }
+
+        tables_processed += 1;
+        if tables_processed % 100 == 0 {
+            eprint!(
+                "\r  Processed {}/{} tables...",
+                tables_processed,
+                table_names.len()
+            );
+        }
+    }
+    eprintln!(
+        "\r  Processed {} tables ({} missing CSVs)",
+        tables_processed, tables_missing
+    );
+
+    let elapsed = start.elapsed();
+    eprintln!(
+        "  {} columns evaluated in {:.1}s\n",
+        predictions.len(),
+        elapsed.as_secs_f64()
+    );
+
+    // ── 6. Compute accuracy metrics ─────────────────────────────────────────
+
+    // Domain-level accuracy for mapped types
+    struct DomainAccuracy {
+        total: usize,
+        row_correct: usize,
+        col_correct: usize,
+    }
+
+    let mut domain_acc: HashMap<String, DomainAccuracy> = HashMap::new();
+    let mut overall_row_correct = 0usize;
+    let mut overall_col_correct = 0usize;
+    let mut overall_mapped = 0usize;
+
+    // Year-specific tracking
+    let mut year_total = 0usize;
+    let mut year_row_correct = 0usize;
+    let mut year_col_correct = 0usize;
+    let mut year_row_predictions: HashMap<String, usize> = HashMap::new();
+    let mut year_col_predictions: HashMap<String, usize> = HashMap::new();
+
+    // Disambiguation tracking
+    let mut disambig_count = 0usize;
+    let mut disambig_rules: HashMap<String, usize> = HashMap::new();
+
+    for pred in &predictions {
+        // Check if disambiguation was applied
+        if pred.disambiguation_applied {
+            disambig_count += 1;
+            if let Some(rule) = &pred.disambiguation_rule {
+                *disambig_rules.entry(rule.clone()).or_default() += 1;
+            }
+        }
+
+        // Year-specific tracking
+        if pred.gt_label == "year" {
+            year_total += 1;
+            let row_domain = pred.row_mode_label.split('.').next().unwrap_or("");
+            let col_domain = pred.column_mode_label.split('.').next().unwrap_or("");
+            if row_domain == "datetime" {
+                year_row_correct += 1;
+            }
+            if col_domain == "datetime" {
+                year_col_correct += 1;
+            }
+            *year_row_predictions
+                .entry(pred.row_mode_label.clone())
+                .or_default() += 1;
+            *year_col_predictions
+                .entry(pred.column_mode_label.clone())
+                .or_default() += 1;
+        }
+
+        // Domain accuracy for mapped types
+        if let Some(&expected_domain) = domain_map.get(pred.gt_label.as_str()) {
+            let row_domain = pred.row_mode_label.split('.').next().unwrap_or("");
+            let col_domain = pred.column_mode_label.split('.').next().unwrap_or("");
+
+            let row_match = row_domain == expected_domain
+                || (expected_domain == "numeric" && row_domain == "representation");
+            let col_match = col_domain == expected_domain
+                || (expected_domain == "numeric" && col_domain == "representation");
+
+            let entry = domain_acc
+                .entry(expected_domain.to_string())
+                .or_insert(DomainAccuracy {
+                    total: 0,
+                    row_correct: 0,
+                    col_correct: 0,
+                });
+            entry.total += 1;
+            if row_match {
+                entry.row_correct += 1;
+                overall_row_correct += 1;
+            }
+            if col_match {
+                entry.col_correct += 1;
+                overall_col_correct += 1;
+            }
+            overall_mapped += 1;
+        }
+    }
+
+    // Where column-mode disagrees with row-mode
+    let mut improvements: Vec<&ColumnPrediction> = Vec::new();
+    let mut regressions: Vec<&ColumnPrediction> = Vec::new();
+    for pred in &predictions {
+        if pred.row_mode_label != pred.column_mode_label {
+            if let Some(&expected_domain) = domain_map.get(pred.gt_label.as_str()) {
+                let row_domain = pred.row_mode_label.split('.').next().unwrap_or("");
+                let col_domain = pred.column_mode_label.split('.').next().unwrap_or("");
+                let row_match = row_domain == expected_domain
+                    || (expected_domain == "numeric" && row_domain == "representation");
+                let col_match = col_domain == expected_domain
+                    || (expected_domain == "numeric" && col_domain == "representation");
+
+                if col_match && !row_match {
+                    improvements.push(pred);
+                } else if !col_match && row_match {
+                    regressions.push(pred);
+                }
+            }
+        }
+    }
+
+    // ── 7. Output results ───────────────────────────────────────────────────
+
+    match output {
+        OutputFormat::Plain | OutputFormat::Csv => {
+            println!("GitTables Column-Mode Evaluation");
+            println!("{}", "═".repeat(70));
+            println!();
+            println!("SCALE");
+            println!("  Tables processed:     {}", tables_processed);
+            println!("  Columns evaluated:    {}", predictions.len());
+            println!("  Columns with mapping: {}", overall_mapped);
+            println!("  Evaluation time:      {:.1}s", elapsed.as_secs_f64());
+            println!();
+
+            // Domain-level accuracy comparison
+            println!("DOMAIN-LEVEL ACCURACY (Row-Mode vs Column-Mode)");
+            println!(
+                "  {:<18} {:>6} {:>12} {:>12} {:>8}",
+                "Domain", "Cols", "Row-Mode", "Col-Mode", "Delta"
+            );
+            println!("  {}", "─".repeat(60));
+
+            let mut sorted_domains: Vec<(String, &DomainAccuracy)> =
+                domain_acc.iter().map(|(k, v)| (k.clone(), v)).collect();
+            sorted_domains.sort_by(|a, b| b.1.total.cmp(&a.1.total));
+
+            for (domain, acc) in &sorted_domains {
+                let row_pct = acc.row_correct as f64 / acc.total as f64 * 100.0;
+                let col_pct = acc.col_correct as f64 / acc.total as f64 * 100.0;
+                let delta = col_pct - row_pct;
+                let delta_str = if delta > 0.0 {
+                    format!("+{:.1}%", delta)
+                } else if delta < 0.0 {
+                    format!("{:.1}%", delta)
+                } else {
+                    "  —".to_string()
+                };
+                println!(
+                    "  {:<18} {:>6} {:>10.1}% {:>10.1}% {:>8}",
+                    domain, acc.total, row_pct, col_pct, delta_str
+                );
+            }
+
+            // Overall
+            let overall_row_pct = overall_row_correct as f64 / overall_mapped as f64 * 100.0;
+            let overall_col_pct = overall_col_correct as f64 / overall_mapped as f64 * 100.0;
+            let overall_delta = overall_col_pct - overall_row_pct;
+            println!("  {}", "─".repeat(60));
+            println!(
+                "  {:<18} {:>6} {:>10.1}% {:>10.1}% {:>+7.1}%",
+                "OVERALL", overall_mapped, overall_row_pct, overall_col_pct, overall_delta
+            );
+
+            // Year-specific report
+            if year_total > 0 {
+                println!();
+                println!("YEAR COLUMN ANALYSIS (NNFT-026 Impact)");
+                println!("  Year columns found: {}", year_total);
+                println!(
+                    "  Row-mode accuracy:    {:.1}% ({}/{})",
+                    year_row_correct as f64 / year_total as f64 * 100.0,
+                    year_row_correct,
+                    year_total
+                );
+                println!(
+                    "  Column-mode accuracy: {:.1}% ({}/{})",
+                    year_col_correct as f64 / year_total as f64 * 100.0,
+                    year_col_correct,
+                    year_total
+                );
+
+                println!();
+                println!("  Row-mode predictions for 'year' columns:");
+                let mut row_sorted: Vec<_> = year_row_predictions.iter().collect();
+                row_sorted.sort_by(|a, b| b.1.cmp(a.1));
+                for (label, count) in &row_sorted {
+                    let pct = **count as f64 / year_total as f64 * 100.0;
+                    println!("    {:.1}%  {}", pct, label);
+                }
+
+                println!();
+                println!("  Column-mode predictions for 'year' columns:");
+                let mut col_sorted: Vec<_> = year_col_predictions.iter().collect();
+                col_sorted.sort_by(|a, b| b.1.cmp(a.1));
+                for (label, count) in &col_sorted {
+                    let pct = **count as f64 / year_total as f64 * 100.0;
+                    println!("    {:.1}%  {}", pct, label);
+                }
+            }
+
+            // Disambiguation summary
+            if disambig_count > 0 {
+                println!();
+                println!("DISAMBIGUATION RULES APPLIED");
+                println!(
+                    "  {} of {} columns had disambiguation applied",
+                    disambig_count,
+                    predictions.len()
+                );
+                let mut rule_sorted: Vec<_> = disambig_rules.iter().collect();
+                rule_sorted.sort_by(|a, b| b.1.cmp(a.1));
+                for (rule, count) in &rule_sorted {
+                    println!("    {:>4}x  {}", count, rule);
+                }
+            }
+
+            // Improvements and regressions
+            if !improvements.is_empty() || !regressions.is_empty() {
+                println!();
+                println!("COLUMN-MODE IMPACT (domain-level changes)");
+                println!(
+                    "  Improvements: {} columns (row wrong → column correct)",
+                    improvements.len()
+                );
+                println!(
+                    "  Regressions:  {} columns (row correct → column wrong)",
+                    regressions.len()
+                );
+
+                if !improvements.is_empty() {
+                    println!();
+                    println!("  Top improvements (showing up to 15):");
+                    for pred in improvements.iter().take(15) {
+                        println!(
+                            "    {}/col{} [{}]: {} → {}",
+                            pred.table_file,
+                            pred.col_idx,
+                            pred.gt_label,
+                            pred.row_mode_label,
+                            pred.column_mode_label
+                        );
+                    }
+                }
+
+                if !regressions.is_empty() {
+                    println!();
+                    println!("  Regressions (showing up to 15):");
+                    for pred in regressions.iter().take(15) {
+                        println!(
+                            "    {}/col{} [{}]: {} → {}",
+                            pred.table_file,
+                            pred.col_idx,
+                            pred.gt_label,
+                            pred.row_mode_label,
+                            pred.column_mode_label
+                        );
+                    }
+                }
+            }
+
+            println!();
+        }
+        OutputFormat::Json => {
+            let domain_results: Vec<serde_json::Value> = {
+                let mut sorted: Vec<(String, &DomainAccuracy)> =
+                    domain_acc.iter().map(|(k, v)| (k.clone(), v)).collect();
+                sorted.sort_by(|a, b| b.1.total.cmp(&a.1.total));
+                sorted
+                    .iter()
+                    .map(|(domain, acc)| {
+                        json!({
+                            "domain": domain,
+                            "total": acc.total,
+                            "row_correct": acc.row_correct,
+                            "col_correct": acc.col_correct,
+                            "row_accuracy": acc.row_correct as f64 / acc.total as f64,
+                            "col_accuracy": acc.col_correct as f64 / acc.total as f64,
+                        })
+                    })
+                    .collect()
+            };
+
+            let result = json!({
+                "tables_processed": tables_processed,
+                "columns_evaluated": predictions.len(),
+                "columns_mapped": overall_mapped,
+                "elapsed_seconds": elapsed.as_secs_f64(),
+                "overall": {
+                    "row_accuracy": overall_row_correct as f64 / overall_mapped as f64,
+                    "col_accuracy": overall_col_correct as f64 / overall_mapped as f64,
+                    "improvements": improvements.len(),
+                    "regressions": regressions.len(),
+                },
+                "year": {
+                    "total": year_total,
+                    "row_correct": year_row_correct,
+                    "col_correct": year_col_correct,
+                },
+                "disambiguation": {
+                    "columns_affected": disambig_count,
+                    "rules": disambig_rules,
+                },
+                "domains": domain_results,
+            });
+            println!("{}", serde_json::to_string_pretty(&result)?);
         }
     }
 

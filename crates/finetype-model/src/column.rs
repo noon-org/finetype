@@ -412,6 +412,7 @@ fn disambiguate_numeric(
     };
 
     // Year detection: 4-digit integers in 1900-2100 range
+    // Relaxed: ≥80% of values must be in year range (allows occasional outliers)
     let year_candidates: Vec<i64> = parsed
         .iter()
         .filter(|&&v| (1900..=2100).contains(&v))
@@ -421,8 +422,12 @@ fn disambiguate_numeric(
         let t = v.trim();
         t.len() == 4 && t.chars().all(|c| c.is_ascii_digit())
     });
-    let is_year_column =
-        year_candidates.len() == parsed.len() && parsed.len() >= 3 && all_trimmed_4digit;
+    let year_fraction = if parsed.is_empty() {
+        0.0
+    } else {
+        year_candidates.len() as f64 / parsed.len() as f64
+    };
+    let is_year_column = year_fraction >= 0.8 && parsed.len() >= 3 && all_trimmed_4digit;
 
     // Decision logic — year check BEFORE sequential, because a column of
     // years (e.g., 2018, 2019, 2020) is more likely to be years than IDs.
@@ -451,6 +456,14 @@ fn disambiguate_numeric(
     }
 
     if consistent_digits && typical_postal_range && !is_sequential {
+        // Exclude year-like columns: if ≥80% of 4-digit values are in 1900-2100,
+        // prefer year over postal code (e.g., years with occasional outlier)
+        if all_trimmed_4digit && year_fraction >= 0.8 {
+            return Some((
+                "datetime.component.year".to_string(),
+                "numeric_year_detection".to_string(),
+            ));
+        }
         // Consistent digit length, typical postal range → postal code
         return Some((
             "geography.address.postal_code".to_string(),
@@ -852,6 +865,72 @@ mod tests {
 
         let result = disambiguate_numeric(&values, &results, &top_labels);
         // Should NOT be year (values are 2-4 digits, not all 4-digit)
+        if let Some((label, _)) = result {
+            assert_ne!(label, "datetime.component.year");
+        }
+    }
+
+    #[test]
+    fn test_year_with_outlier_not_postal_code() {
+        // Year column with one outlier outside 1900-2100 — should still be year (≥80% rule)
+        let values: Vec<String> = vec![
+            "2020", "2019", "2021", "2018", "2023", "2015", "2022", "2017", "2024", "1776",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+
+        let results: Vec<ClassificationResult> = values
+            .iter()
+            .map(|_| ClassificationResult {
+                label: "geography.address.postal_code".to_string(),
+                confidence: 0.6,
+                all_scores: vec![],
+            })
+            .collect();
+
+        let votes = vec![
+            ("geography.address.postal_code".to_string(), 5),
+            ("representation.numeric.decimal_number".to_string(), 3),
+            ("datetime.component.year".to_string(), 2),
+        ];
+        let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
+
+        let result = disambiguate_numeric(&values, &results, &top_labels);
+        assert!(result.is_some());
+        let (label, _rule) = result.unwrap();
+        // Should be year, NOT postal_code: 9 of 10 values are in 1900-2100 (90% ≥ 80%)
+        assert_eq!(label, "datetime.component.year");
+    }
+
+    #[test]
+    fn test_year_with_many_outliers_not_year() {
+        // Only 60% of values in year range — below 80% threshold, should NOT be year
+        let values: Vec<String> = vec![
+            "2020", "2019", "2021", "1500", "1600", "1700", "1800", "2022", "2023", "2024",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+
+        let results: Vec<ClassificationResult> = values
+            .iter()
+            .map(|_| ClassificationResult {
+                label: "representation.numeric.integer_number".to_string(),
+                confidence: 0.6,
+                all_scores: vec![],
+            })
+            .collect();
+
+        let votes = vec![
+            ("representation.numeric.integer_number".to_string(), 5),
+            ("geography.address.postal_code".to_string(), 3),
+            ("datetime.component.year".to_string(), 2),
+        ];
+        let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
+
+        let result = disambiguate_numeric(&values, &results, &top_labels);
+        // 6/10 in year range = 60% < 80% threshold → should NOT be year
         if let Some((label, _)) = result {
             assert_ne!(label, "datetime.component.year");
         }
