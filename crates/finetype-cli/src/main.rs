@@ -197,6 +197,7 @@ enum OutputFormat {
 enum ModelType {
     Transformer,
     CharCnn,
+    Tiered,
 }
 
 fn main() -> Result<()> {
@@ -361,6 +362,13 @@ fn cmd_infer(
                 output_result(&text, &result, output, show_value, show_confidence);
             }
         }
+        ModelType::Tiered => {
+            let classifier = finetype_model::TieredClassifier::load(&model)?;
+            for text in inputs {
+                let result = classifier.classify(&text)?;
+                output_result(&text, &result, output, show_value, show_confidence);
+            }
+        }
     }
 
     Ok(())
@@ -487,6 +495,28 @@ fn cmd_train(
 
             let trainer = CharTrainer::new(config);
             trainer.train(&taxonomy, &samples, &output)?;
+        }
+        ModelType::Tiered => {
+            use finetype_model::{TieredTrainer, TieredTrainingConfig};
+
+            let config = TieredTrainingConfig {
+                batch_size,
+                epochs,
+                learning_rate: 1e-3,
+                max_seq_length: 128,
+                embed_dim: 32,
+                num_filters: 64,
+                hidden_dim: 128,
+                weight_decay: 1e-4,
+                tier2_min_types: 1,
+            };
+
+            eprintln!("Training Tiered models (Tier 0 → Tier 1 → Tier 2)");
+            eprintln!("Training config: {:?}", config);
+
+            let trainer = TieredTrainer::new(config);
+            let report = trainer.train_all(&taxonomy, &samples, &output)?;
+            eprintln!("{}", report);
         }
     }
 
@@ -746,6 +776,17 @@ fn cmd_eval(
             eprintln!("Running inference...");
 
             let batch_size = 32;
+            let texts: Vec<String> = test_samples.iter().map(|(t, _)| t.clone()).collect();
+            for chunk in texts.chunks(batch_size) {
+                let batch_results = classifier.classify_batch(chunk)?;
+                predictions.extend(batch_results);
+            }
+        }
+        ModelType::Tiered => {
+            let classifier = finetype_model::TieredClassifier::load(&model)?;
+            eprintln!("Running tiered inference...");
+
+            let batch_size = 128;
             let texts: Vec<String> = test_samples.iter().map(|(t, _)| t.clone()).collect();
             for chunk in texts.chunks(batch_size) {
                 let batch_results = classifier.classify_batch(chunk)?;

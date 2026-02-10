@@ -14,5 +14,5 @@ pub mod tokenizer;
 
 pub use checker::{format_report, CheckReport, Checker};
 pub use generator::{Generator, Sample};
-pub use taxonomy::{Definition, Designation, Label, Taxonomy};
+pub use taxonomy::{Definition, Designation, Label, Taxonomy, TierGraph, TierGraphSummary};
 pub use tokenizer::Tokenizer;

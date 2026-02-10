@@ -302,6 +302,211 @@ impl Taxonomy {
             .map(|(i, l)| (i, l.clone()))
             .collect()
     }
+
+    /// Build a tier graph from the taxonomy's tier fields.
+    pub fn tier_graph(&self) -> TierGraph {
+        TierGraph::from_taxonomy(self)
+    }
+}
+
+/// Tier graph for hierarchical inference.
+///
+/// Extracts the tree structure from the `tier` field in each definition:
+/// - **Tier 0**: Broad DuckDB type (e.g., VARCHAR, DATE, TIMESTAMP)
+/// - **Tier 1**: Category within a broad type (e.g., internet, person, date)
+/// - **Tier 2**: Specific type within a category (the full `domain.category.type` label)
+///
+/// The graph is built from the `tier: [BROAD_TYPE, category]` field in each definition.
+#[derive(Debug, Clone)]
+pub struct TierGraph {
+    /// Sorted unique broad types (Tier 0 classes)
+    broad_types: Vec<String>,
+    /// broad_type → sorted category names (Tier 1 classes per broad type)
+    categories: HashMap<String, Vec<String>>,
+    /// (broad_type, category) → sorted full labels (Tier 2 classes)
+    types: HashMap<(String, String), Vec<String>>,
+    /// full label → (broad_type, category)
+    label_path: HashMap<String, (String, String)>,
+}
+
+impl TierGraph {
+    /// Build a tier graph from a taxonomy.
+    pub fn from_taxonomy(taxonomy: &Taxonomy) -> Self {
+        let mut categories: HashMap<String, Vec<String>> = HashMap::new();
+        let mut types: HashMap<(String, String), Vec<String>> = HashMap::new();
+        let mut label_path: HashMap<String, (String, String)> = HashMap::new();
+
+        for (key, def) in taxonomy.definitions() {
+            if def.tier.len() >= 2 {
+                let broad_type = def.tier[0].clone();
+                let category = def.tier[1].clone();
+
+                categories
+                    .entry(broad_type.clone())
+                    .or_default()
+                    .push(category.clone());
+
+                types
+                    .entry((broad_type.clone(), category.clone()))
+                    .or_default()
+                    .push(key.clone());
+
+                label_path.insert(key.clone(), (broad_type, category));
+            }
+        }
+
+        // Deduplicate and sort
+        for cats in categories.values_mut() {
+            cats.sort();
+            cats.dedup();
+        }
+        for labels in types.values_mut() {
+            labels.sort();
+        }
+
+        let mut broad_types: Vec<String> = categories.keys().cloned().collect();
+        broad_types.sort();
+
+        TierGraph {
+            broad_types,
+            categories,
+            types,
+            label_path,
+        }
+    }
+
+    /// Get Tier 0 classes (sorted broad types).
+    pub fn broad_types(&self) -> &[String] {
+        &self.broad_types
+    }
+
+    /// Get Tier 1 classes for a broad type (sorted categories).
+    pub fn categories_for(&self, broad_type: &str) -> &[String] {
+        self.categories
+            .get(broad_type)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
+    }
+
+    /// Get Tier 2 classes for a (broad_type, category) pair (sorted full labels).
+    pub fn types_for(&self, broad_type: &str, category: &str) -> &[String] {
+        self.types
+            .get(&(broad_type.to_string(), category.to_string()))
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
+    }
+
+    /// Get the tier path (broad_type, category) for a full label.
+    pub fn tier_path(&self, label: &str) -> Option<&(String, String)> {
+        self.label_path.get(label)
+    }
+
+    /// Get the broad type (Tier 0 label) for a full label.
+    pub fn broad_type_for(&self, label: &str) -> Option<&str> {
+        self.label_path.get(label).map(|(bt, _)| bt.as_str())
+    }
+
+    /// Get the category (Tier 1 label) for a full label.
+    pub fn category_for(&self, label: &str) -> Option<&str> {
+        self.label_path.get(label).map(|(_, cat)| cat.as_str())
+    }
+
+    /// Whether a Tier 2 model is needed for this (broad_type, category) — true if >5 types.
+    pub fn needs_tier2(&self, broad_type: &str, category: &str, min_types: usize) -> bool {
+        self.types_for(broad_type, category).len() > min_types
+    }
+
+    /// Number of Tier 0 classes.
+    pub fn num_broad_types(&self) -> usize {
+        self.broad_types.len()
+    }
+
+    /// Number of Tier 1 classes for a broad type.
+    pub fn num_categories(&self, broad_type: &str) -> usize {
+        self.categories_for(broad_type).len()
+    }
+
+    /// Number of Tier 2 classes for a (broad_type, category).
+    pub fn num_types(&self, broad_type: &str, category: &str) -> usize {
+        self.types_for(broad_type, category).len()
+    }
+
+    /// Get all (broad_type, category) pairs that need a Tier 2 model.
+    pub fn tier2_groups(&self, min_types: usize) -> Vec<(String, String)> {
+        let mut groups: Vec<(String, String)> = self
+            .types
+            .iter()
+            .filter(|(_, labels)| labels.len() > min_types)
+            .map(|((bt, cat), _)| (bt.clone(), cat.clone()))
+            .collect();
+        groups.sort();
+        groups
+    }
+
+    /// Get all (broad_type, category) pairs where Tier 1 directly resolves to a single type
+    /// (no Tier 2 needed because there's only one type in this group).
+    pub fn direct_resolve_groups(&self) -> Vec<((String, String), String)> {
+        let mut groups: Vec<((String, String), String)> = self
+            .types
+            .iter()
+            .filter(|(_, labels)| labels.len() == 1)
+            .map(|((bt, cat), labels)| ((bt.clone(), cat.clone()), labels[0].clone()))
+            .collect();
+        groups.sort();
+        groups
+    }
+
+    /// Summary of the tier graph structure.
+    pub fn summary(&self) -> TierGraphSummary {
+        let tier1_models = self.broad_types.len();
+        let tier2_models_5 = self.tier2_groups(5).len();
+        let tier2_models_1 = self.tier2_groups(1).len();
+        let direct_resolve = self.direct_resolve_groups().len();
+        let total_labels = self.label_path.len();
+
+        TierGraphSummary {
+            tier0_classes: self.broad_types.len(),
+            tier1_models,
+            tier2_models_gt5: tier2_models_5,
+            tier2_models_gt1: tier2_models_1,
+            direct_resolve_groups: direct_resolve,
+            total_labels,
+        }
+    }
+}
+
+/// Summary statistics for a tier graph.
+#[derive(Debug, Clone)]
+pub struct TierGraphSummary {
+    pub tier0_classes: usize,
+    pub tier1_models: usize,
+    pub tier2_models_gt5: usize,
+    pub tier2_models_gt1: usize,
+    pub direct_resolve_groups: usize,
+    pub total_labels: usize,
+}
+
+impl std::fmt::Display for TierGraphSummary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Tier Graph Summary:")?;
+        writeln!(f, "  Tier 0: {} broad types", self.tier0_classes)?;
+        writeln!(
+            f,
+            "  Tier 1: {} models (one per broad type)",
+            self.tier1_models
+        )?;
+        writeln!(
+            f,
+            "  Tier 2: {} models (categories with >5 types)",
+            self.tier2_models_gt5
+        )?;
+        writeln!(
+            f,
+            "  Direct resolve: {} groups (single type, no Tier 2 needed)",
+            self.direct_resolve_groups
+        )?;
+        writeln!(f, "  Total labels: {}", self.total_labels)
+    }
 }
 
 #[cfg(test)]
@@ -384,5 +589,135 @@ datetime.timestamp.iso_8601:
         let taxonomy = Taxonomy::from_yaml(SAMPLE_YAML).unwrap();
         assert_eq!(taxonomy.at_priority(5).len(), 1);
         assert_eq!(taxonomy.at_priority(6).len(), 0);
+    }
+
+    const TIERED_YAML: &str = r#"
+datetime.timestamp.iso_8601:
+  title: "ISO 8601"
+  description: "Standard"
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: null
+  transform: null
+  validation:
+    type: string
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  samples: ["2024-01-15T10:30:00Z"]
+
+datetime.timestamp.rfc_2822:
+  title: "RFC 2822"
+  description: "Email"
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: TIMESTAMP
+  format_string: null
+  transform: null
+  validation:
+    type: string
+  tier: [TIMESTAMP, timestamp]
+  release_priority: 5
+  samples: ["Mon, 15 Jan 2024 10:30:00 +0000"]
+
+datetime.date.us_slash:
+  title: "US Slash Date"
+  description: "US format"
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: DATE
+  format_string: null
+  transform: null
+  validation:
+    type: string
+  tier: [DATE, date]
+  release_priority: 5
+  samples: ["01/15/2024"]
+
+technology.internet.ip_v4:
+  title: "IPv4"
+  description: "IP"
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: INET
+  format_string: null
+  transform: null
+  validation:
+    type: string
+  tier: [INET, internet]
+  release_priority: 5
+  samples: ["192.168.1.1"]
+
+technology.internet.ip_v6:
+  title: "IPv6"
+  description: "IP"
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: INET
+  format_string: null
+  transform: null
+  validation:
+    type: string
+  tier: [INET, internet]
+  release_priority: 5
+  samples: ["::1"]
+"#;
+
+    #[test]
+    fn test_tier_graph_broad_types() {
+        let taxonomy = Taxonomy::from_yaml(TIERED_YAML).unwrap();
+        let graph = taxonomy.tier_graph();
+        assert_eq!(graph.broad_types(), &["DATE", "INET", "TIMESTAMP"]);
+        assert_eq!(graph.num_broad_types(), 3);
+    }
+
+    #[test]
+    fn test_tier_graph_categories() {
+        let taxonomy = Taxonomy::from_yaml(TIERED_YAML).unwrap();
+        let graph = taxonomy.tier_graph();
+        assert_eq!(graph.categories_for("TIMESTAMP"), &["timestamp"]);
+        assert_eq!(graph.categories_for("INET"), &["internet"]);
+        assert_eq!(graph.categories_for("DATE"), &["date"]);
+        assert_eq!(graph.categories_for("UNKNOWN").len(), 0);
+    }
+
+    #[test]
+    fn test_tier_graph_types() {
+        let taxonomy = Taxonomy::from_yaml(TIERED_YAML).unwrap();
+        let graph = taxonomy.tier_graph();
+        let ts_types = graph.types_for("TIMESTAMP", "timestamp");
+        assert_eq!(ts_types.len(), 2);
+        assert!(ts_types.contains(&"datetime.timestamp.iso_8601".to_string()));
+        assert!(ts_types.contains(&"datetime.timestamp.rfc_2822".to_string()));
+
+        let inet_types = graph.types_for("INET", "internet");
+        assert_eq!(inet_types.len(), 2);
+    }
+
+    #[test]
+    fn test_tier_graph_tier_path() {
+        let taxonomy = Taxonomy::from_yaml(TIERED_YAML).unwrap();
+        let graph = taxonomy.tier_graph();
+        assert_eq!(
+            graph.tier_path("datetime.timestamp.iso_8601"),
+            Some(&("TIMESTAMP".to_string(), "timestamp".to_string()))
+        );
+        assert_eq!(
+            graph.broad_type_for("technology.internet.ip_v4"),
+            Some("INET")
+        );
+        assert_eq!(
+            graph.category_for("technology.internet.ip_v4"),
+            Some("internet")
+        );
+    }
+
+    #[test]
+    fn test_tier_graph_summary() {
+        let taxonomy = Taxonomy::from_yaml(TIERED_YAML).unwrap();
+        let graph = taxonomy.tier_graph();
+        let summary = graph.summary();
+        assert_eq!(summary.tier0_classes, 3);
+        assert_eq!(summary.total_labels, 5);
     }
 }
