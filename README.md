@@ -4,13 +4,13 @@ Semantic type classification for text data. FineType profiles strings beyond pri
 
 ```
 $ finetype infer "192.168.1.1"
-internet.ip_v4
+technology.internet.ip_v4
 
 $ finetype infer "2024-01-15T10:30:00Z"
-datetime.iso_8601
+datetime.timestamp.iso_8601
 
 $ finetype infer "hello@example.com"
-person.email
+identity.person.email
 ```
 
 ## Features
@@ -72,7 +72,7 @@ LOAD finetype;
 
 -- Classify a single value
 SELECT finetype('192.168.1.1');
--- → 'internet.ip_v4'
+-- → 'technology.internet.ip_v4'
 
 -- Classify a column
 SELECT value, finetype(value) as type
@@ -88,26 +88,25 @@ let classifier = Classifier::load("models/default")?;
 let result = classifier.classify("hello@example.com")?;
 
 println!("{} (confidence: {:.2})", result.label, result.confidence);
-// → person.email (confidence: 0.97)
+// → identity.person.email (confidence: 0.97)
 ```
 
 ## Taxonomy
 
-FineType recognizes types across these categories:
+FineType recognizes **151 types** across **6 domains**:
 
-| Category | Examples |
-|----------|----------|
-| `datetime` | ISO 8601, RFC 2822, Unix timestamps, timezones |
-| `internet` | IPv4, IPv6, MAC addresses, URLs, emails, user agents |
-| `cryptographic` | UUIDs, hashes (MD5, SHA), Bitcoin/Ethereum addresses |
-| `person` | Names, phone numbers, emails |
-| `address` | Cities, countries, postal codes, coordinates |
-| `code` | EAN, IMEI, ISBN, ISSN, locale codes |
-| `payment` | Credit card numbers, crypto addresses |
-| `finance` | Currency codes, stock tickers |
-| `science` | DNA/RNA sequences |
+| Domain | Types | Examples |
+|--------|-------|----------|
+| `datetime` | 46 | ISO 8601, RFC 2822, Unix timestamps, timezones, date formats |
+| `technology` | 34 | IPv4, IPv6, MAC addresses, URLs, UUIDs, hashes, user agents |
+| `identity` | 25 | Names, emails, phone numbers, passwords, gender symbols |
+| `representation` | 19 | Integers, floats, booleans, hex colors, base64, JSON |
+| `geography` | 16 | Latitude, longitude, countries, cities, postal codes |
+| `container` | 11 | JSON objects, CSV rows, query strings, key-value pairs |
 
-See [`labels/definitions.yaml`](labels/definitions.yaml) for the complete taxonomy.
+Each type is a **transformation contract** — if the model predicts `datetime.date.us_slash`, that guarantees `strptime(value, '%m/%d/%Y')::DATE` will succeed.
+
+See [`labels/`](labels/) for the complete taxonomy (YAML definitions with validation schemas, transforms, and sample data).
 
 ## Performance
 
