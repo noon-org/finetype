@@ -430,6 +430,11 @@ impl CharClassifier {
             });
         }
 
+        // Post-process: apply format-based corrections for known model confusions
+        for (result, text) in results.iter_mut().zip(texts.iter()) {
+            post_process(result, text);
+        }
+
         Ok(results)
     }
 
@@ -450,5 +455,94 @@ impl CharClassifier {
         }
 
         Device::Cpu
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST-PROCESSING RULES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Apply format-based corrections for known model confusion pairs.
+///
+/// These rules check the actual input text to resolve confusions where the model
+/// struggles but the format provides a definitive signal. Each rule is a simple
+/// character/pattern check with no ambiguity.
+fn post_process(result: &mut ClassificationResult, text: &str) {
+    // Rule 1: rfc_3339 vs iso_8601_offset
+    //
+    // The only difference is T (ISO 8601) vs space (RFC 3339) between date and time.
+    // The model confuses these 100% of the time. A simple character check resolves it.
+    //
+    // iso_8601_offset: "2024-01-15T10:30:00+05:00" (T separator)
+    // rfc_3339:        "2024-01-15 10:30:00+05:00" (space separator)
+    if result.label == "datetime.timestamp.iso_8601_offset"
+        || result.label == "datetime.timestamp.rfc_3339"
+    {
+        let trimmed = text.trim();
+        // Look for the separator at position 10 (after YYYY-MM-DD)
+        if trimmed.len() >= 11 {
+            let sep = trimmed.as_bytes()[10];
+            if sep == b'T' {
+                result.label = "datetime.timestamp.iso_8601_offset".to_string();
+            } else if sep == b' ' {
+                result.label = "datetime.timestamp.rfc_3339".to_string();
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod post_process_tests {
+    use super::*;
+
+    fn make_result(label: &str) -> ClassificationResult {
+        ClassificationResult {
+            label: label.to_string(),
+            confidence: 0.9,
+            all_scores: vec![],
+        }
+    }
+
+    #[test]
+    fn test_iso_8601_offset_with_t_separator() {
+        let mut result = make_result("datetime.timestamp.rfc_3339");
+        post_process(&mut result, "2024-01-15T10:30:00+05:00");
+        assert_eq!(result.label, "datetime.timestamp.iso_8601_offset");
+    }
+
+    #[test]
+    fn test_rfc_3339_with_space_separator() {
+        let mut result = make_result("datetime.timestamp.iso_8601_offset");
+        post_process(&mut result, "2024-01-15 10:30:00+05:00");
+        assert_eq!(result.label, "datetime.timestamp.rfc_3339");
+    }
+
+    #[test]
+    fn test_correct_iso_8601_offset_unchanged() {
+        let mut result = make_result("datetime.timestamp.iso_8601_offset");
+        post_process(&mut result, "2024-01-15T10:30:00+05:00");
+        assert_eq!(result.label, "datetime.timestamp.iso_8601_offset");
+    }
+
+    #[test]
+    fn test_correct_rfc_3339_unchanged() {
+        let mut result = make_result("datetime.timestamp.rfc_3339");
+        post_process(&mut result, "2024-01-15 10:30:00+05:00");
+        assert_eq!(result.label, "datetime.timestamp.rfc_3339");
+    }
+
+    #[test]
+    fn test_unrelated_label_unchanged() {
+        let mut result = make_result("technology.internet.ip_v4");
+        post_process(&mut result, "192.168.1.1");
+        assert_eq!(result.label, "technology.internet.ip_v4");
+    }
+
+    #[test]
+    fn test_short_text_no_crash() {
+        let mut result = make_result("datetime.timestamp.rfc_3339");
+        post_process(&mut result, "short");
+        // No crash, label unchanged (too short to check)
+        assert_eq!(result.label, "datetime.timestamp.rfc_3339");
     }
 }
