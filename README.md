@@ -15,24 +15,34 @@ person.email
 
 ## Features
 
-- **100+ semantic types** — dates, IPs, emails, UUIDs, credit cards, and more
-- **Locale-aware** — handles region-specific formats
-- **Fast inference** — Rust + Candle transformer model
-- **DuckDB integration** — use directly in SQL queries
+- **151 semantic types** across 6 domains — dates, times, IPs, emails, UUIDs, credit cards, and more
+- **Locale-aware** — handles region-specific formats (16+ locales for dates, addresses, phone numbers)
+- **Fast inference** — Character-level CNN model (600+ classifications/sec, 8.5 MB memory)
+- **DuckDB integration** — use directly in SQL with `finetype()` and `finetype_profile()` scalar functions
 - **Pure Rust** — no Python runtime required
+- **Production-ready** — 33 tests, comprehensive taxonomy validation, benchmarked performance
 
 ## Installation
+
+### Homebrew (macOS)
+
+```bash
+brew install noon-org/tap/finetype
+```
+
+### Cargo
 
 ```bash
 cargo install finetype-cli
 ```
 
-Or build from source:
+### From Source
 
 ```bash
 git clone https://github.com/noon-org/finetype
 cd finetype
 cargo build --release
+./target/release/finetype --version
 ```
 
 ## Usage
@@ -99,37 +109,88 @@ FineType recognizes types across these categories:
 
 See [`labels/definitions.yaml`](labels/definitions.yaml) for the complete taxonomy.
 
+## Performance
+
+- **Model load time**: 66 ms (cold), 25–30 ms (warm)
+- **Single inference**: p50=26 ms, p95=41 ms (includes CLI startup)
+- **Batch throughput**: 600–750 values/sec on CPU
+- **Memory footprint**: 8.5 MB peak RSS
+
 ## Architecture
 
+**Three crates:**
+
 ```
-finetype/
-├── crates/
-│   ├── finetype-core/    # Taxonomy, tokenizer, data generation
-│   ├── finetype-model/   # Candle transformer model
-│   └── finetype-cli/     # CLI binary
-├── extension/            # DuckDB extension
-├── labels/               # Taxonomy definitions (YAML)
-└── models/               # Pre-trained weights
+crates/finetype-core/    # Taxonomy, tokenizer, synthetic data generation, 33 tests
+crates/finetype-model/   # Candle CharCNN, trainer, inference engine
+crates/finetype-cli/     # Binary: CLI commands (infer, generate, train, check)
 ```
 
-## Training
+**Data & Models:**
+
+```
+labels/                  # Taxonomy definitions (151 types, 6 domains, YAML)
+models/char-cnn-v1/      # Pre-trained weights, config, label mapping
+backlog/                 # Project tasks and decisions (Backlog.md format)
+.github/workflows/       # CI/CD: fmt, clippy, test, finetype check; release cross-compile
+```
+
+**DuckDB Extension (Phase 5):**
+
+```
+finetype-duckdb/         # Rust extension template, embed models/taxonomy
+```
+
+## Model Training
 
 ```bash
 # Generate training data
-finetype generate --samples 10000 --priority 3 --output data/train.ndjson
+finetype generate --samples 75500 --priority 3 --output data/train.ndjson
 
 # Train model
-finetype train --data data/train.ndjson --epochs 5 --device metal
+finetype train --data data/train.ndjson --epochs 10 --batch-size 64 --device cpu
+```
+
+## Development
+
+See [`DEVELOPMENT.md`](DEVELOPMENT.md) for:
+
+- Complete taxonomy documentation
+- Architecture decisions (tiered models, column-mode inference, DuckDB extension strategy)
+- Roadmap (Phases 1–6: data gen → training → validation → DuckDB ext → HuggingFace release)
+- Testing and benchmarking
+
+### Quick Start
+
+```bash
+# Install Rust, clone repo
+git clone https://github.com/noon-org/finetype
+cd finetype
+
+# Run tests
+cargo test --all
+
+# Validate taxonomy
+cargo run --release -- check
+
+# Infer a type
+cargo run --release -- infer "hello@example.com"
 ```
 
 ## License
 
-MIT
+MIT — see [`LICENSE`](LICENSE)
+
+## Contributing
+
+Contributions welcome! Please open an issue or PR.
 
 ## Credits
 
 Part of the [Noon](https://github.com/noon-org) project.
 
 Built with:
-- [Candle](https://github.com/huggingface/candle) — ML framework
+- [Candle](https://github.com/huggingface/candle) — Rust ML framework
 - [DuckDB](https://duckdb.org) — Analytical database
+- [Serde](https://serde.rs) — Serialization
+- [Regex](https://docs.rs/regex) — Pattern matching
