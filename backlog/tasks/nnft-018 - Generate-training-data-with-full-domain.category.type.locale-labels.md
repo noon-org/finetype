@@ -1,9 +1,11 @@
 ---
 id: NNFT-018
 title: Generate training data with full domain.category.type.locale labels
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@nightingale'
 created_date: '2026-02-10 05:32'
+updated_date: '2026-02-10 12:46'
 labels:
   - data-generation
   - locale
@@ -30,3 +32,9 @@ Expand the data generation pipeline to produce samples with full 4-level labels 
 - [ ] #4 Generated data validates against taxonomy (each label resolves to a known definition + locale)
 - [ ] #5 Training and test datasets regenerated with locale-expanded labels
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Review taxonomy locale assignments in definitions_*.yaml\n2. Map locales to types (extract locale_specific types, list their locales)\n3. Extend Sample struct to optionally include locale\n4. Modify generator to emit locale variants (domain.category.type.locale)\n5. Validate generated labels against taxonomy (check definition + locale exists)\n6. Regenerate training/test datasets with locale labels\n7. Update checker to validate locale dimensions
+<!-- SECTION:PLAN:END -->
