@@ -20,7 +20,7 @@ identity.person.email
 - **Fast inference** — Character-level CNN model (600+ classifications/sec, 8.5 MB memory)
 - **DuckDB integration** — use directly in SQL with `finetype()` and `finetype_profile()` scalar functions
 - **Pure Rust** — no Python runtime required
-- **Production-ready** — 33 tests, comprehensive taxonomy validation, benchmarked performance
+- **Production-ready** — 38 tests, comprehensive taxonomy validation, benchmarked performance
 
 ## Installation
 
@@ -110,6 +110,15 @@ See [`labels/`](labels/) for the complete taxonomy (YAML definitions with valida
 
 ## Performance
 
+**Accuracy** (on 15,100 held-out test samples):
+
+| Model | Accuracy | Perfect F1 Types |
+|-------|----------|-----------------|
+| Flat CharCNN v2 | **91.97%** | 71/151 |
+| Tiered (Tier 0 → 1 → 2) | 90.00% | 52/151 |
+
+**Latency & throughput:**
+
 - **Model load time**: 66 ms (cold), 25–30 ms (warm)
 - **Single inference**: p50=26 ms, p95=41 ms (includes CLI startup)
 - **Batch throughput**: 600–750 values/sec on CPU
@@ -120,16 +129,17 @@ See [`labels/`](labels/) for the complete taxonomy (YAML definitions with valida
 **Three crates:**
 
 ```
-crates/finetype-core/    # Taxonomy, tokenizer, synthetic data generation, 33 tests
-crates/finetype-model/   # Candle CharCNN, trainer, inference engine
-crates/finetype-cli/     # Binary: CLI commands (infer, generate, train, check)
+crates/finetype-core/    # Taxonomy, tokenizer, synthetic data generation, 38 tests
+crates/finetype-model/   # Candle CharCNN, flat & tiered trainers, inference engines
+crates/finetype-cli/     # Binary: CLI commands (infer, generate, train, eval, check)
 ```
 
 **Data & Models:**
 
 ```
 labels/                  # Taxonomy definitions (151 types, 6 domains, YAML)
-models/char-cnn-v1/      # Pre-trained weights, config, label mapping
+models/char-cnn-v2/      # Pre-trained flat model weights, config, label mapping
+models/tiered/           # Tiered model hierarchy (38 models, tier_graph.json)
 backlog/                 # Project tasks and decisions (Backlog.md format)
 .github/workflows/       # CI/CD: fmt, clippy, test, finetype check; release cross-compile
 ```
@@ -146,8 +156,14 @@ finetype-duckdb/         # Rust extension template, embed models/taxonomy
 # Generate training data
 finetype generate --samples 75500 --priority 3 --output data/train.ndjson
 
-# Train model
-finetype train --data data/train.ndjson --epochs 10 --batch-size 64 --device cpu
+# Train flat model (single 151-class CharCNN)
+finetype train --data data/train.ndjson --epochs 10 --batch-size 64
+
+# Train tiered model (Tier 0 → Tier 1 → Tier 2 hierarchy, 38 models)
+finetype train --data data/train.ndjson --epochs 10 --batch-size 64 --model-type tiered
+
+# Evaluate model accuracy
+finetype eval --data data/test.ndjson --model models/char-cnn-v2 --output results.json
 ```
 
 ## Development
