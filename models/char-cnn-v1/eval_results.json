@@ -1,0 +1,1155 @@
+{
+  "accuracy": 0.898255033557047,
+  "avg_confidence_correct": 0.9547093510627747,
+  "avg_confidence_wrong": 0.6211411952972412,
+  "correct": 13384,
+  "per_class": [
+    {
+      "class": "container.array.comma_separated",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.array.pipe_separated",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.array.semicolon_separated",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.array.whitespace_separated",
+      "f1": 0.9523809523809523,
+      "precision": 0.9090909090909091,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.key_value.form_data",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.key_value.query_string",
+      "f1": 0.9950248756218906,
+      "precision": 0.9900990099009901,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.object.csv",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.object.json",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.object.json_array",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.object.xml",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "container.object.yaml",
+      "f1": 0.9523809523809523,
+      "precision": 0.9090909090909091,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.component.century",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.component.day_of_month",
+      "f1": 0.8319327731092437,
+      "precision": 0.717391304347826,
+      "recall": 0.99,
+      "support": 100
+    },
+    {
+      "class": "datetime.component.day_of_week",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.component.month_name",
+      "f1": 0.9583333333333334,
+      "precision": 1.0,
+      "recall": 0.92,
+      "support": 100
+    },
+    {
+      "class": "datetime.component.periodicity",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.component.year",
+      "f1": 0.9852216748768473,
+      "precision": 0.970873786407767,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.abbreviated_month",
+      "f1": 0.9748743718592964,
+      "precision": 0.9797979797979798,
+      "recall": 0.97,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.compact_dmy",
+      "f1": 0.7876106194690266,
+      "precision": 0.7063492063492064,
+      "recall": 0.89,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.compact_mdy",
+      "f1": 0.7374301675977653,
+      "precision": 0.8354430379746836,
+      "recall": 0.66,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.compact_ymd",
+      "f1": 0.9849246231155778,
+      "precision": 0.98989898989899,
+      "recall": 0.98,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.eu_dot",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.eu_slash",
+      "f1": 0.8085106382978724,
+      "precision": 0.7037037037037037,
+      "recall": 0.95,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.iso",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.iso_week",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.julian",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.long_full_month",
+      "f1": 0.9751243781094527,
+      "precision": 0.9702970297029703,
+      "recall": 0.98,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.ordinal",
+      "f1": 0.9950248756218906,
+      "precision": 0.9900990099009901,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.short_dmy",
+      "f1": 0.5102040816326531,
+      "precision": 0.5208333333333334,
+      "recall": 0.5,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.short_mdy",
+      "f1": 0.7029702970297029,
+      "precision": 0.696078431372549,
+      "recall": 0.71,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.short_ymd",
+      "f1": 0.7623762376237624,
+      "precision": 0.7549019607843137,
+      "recall": 0.77,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.us_slash",
+      "f1": 0.7272727272727274,
+      "precision": 0.9230769230769231,
+      "recall": 0.6,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.weekday_abbreviated_month",
+      "f1": 0.9615384615384615,
+      "precision": 0.9259259259259259,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.date.weekday_full_month",
+      "f1": 0.9637305699481865,
+      "precision": 1.0,
+      "recall": 0.93,
+      "support": 100
+    },
+    {
+      "class": "datetime.duration.iso_8601",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.epoch.unix_microseconds",
+      "f1": 0.40845070422535207,
+      "precision": 0.6904761904761905,
+      "recall": 0.29,
+      "support": 100
+    },
+    {
+      "class": "datetime.epoch.unix_milliseconds",
+      "f1": 0.4662576687116564,
+      "precision": 0.6031746031746031,
+      "recall": 0.38,
+      "support": 100
+    },
+    {
+      "class": "datetime.epoch.unix_seconds",
+      "f1": 0.7981220657276995,
+      "precision": 0.7522123893805309,
+      "recall": 0.85,
+      "support": 100
+    },
+    {
+      "class": "datetime.offset.iana",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.offset.utc",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.time.hm_12h",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.time.hm_24h",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.time.hms_12h",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.time.hms_24h",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.time.iso",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.american",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.american_24h",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.european",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.iso_8601",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.iso_8601_compact",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.iso_8601_microseconds",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.iso_8601_offset",
+      "f1": 0.019801980198019802,
+      "precision": 1.0,
+      "recall": 0.01,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.iso_microseconds",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.rfc_2822",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.rfc_2822_ordinal",
+      "f1": 0.9950248756218906,
+      "precision": 0.9900990099009901,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.rfc_3339",
+      "f1": 0.6688963210702341,
+      "precision": 0.5025125628140703,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "datetime.timestamp.sql_standard",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "geography.address.full_address",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "geography.address.postal_code",
+      "f1": 0.4131455399061033,
+      "precision": 0.3893805309734513,
+      "recall": 0.44,
+      "support": 100
+    },
+    {
+      "class": "geography.address.street_name",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "geography.address.street_number",
+      "f1": 0.6040268456375839,
+      "precision": 0.45454545454545453,
+      "recall": 0.9,
+      "support": 100
+    },
+    {
+      "class": "geography.address.street_suffix",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "geography.contact.calling_code",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "geography.coordinate.coordinates",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "geography.coordinate.latitude",
+      "f1": 0.7310924369747899,
+      "precision": 0.6304347826086957,
+      "recall": 0.87,
+      "support": 100
+    },
+    {
+      "class": "geography.coordinate.longitude",
+      "f1": 0.547486033519553,
+      "precision": 0.620253164556962,
+      "recall": 0.49,
+      "support": 100
+    },
+    {
+      "class": "geography.location.city",
+      "f1": 0.91324200913242,
+      "precision": 0.8403361344537815,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "geography.location.continent",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "geography.location.country",
+      "f1": 0.9950248756218906,
+      "precision": 0.9900990099009901,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "geography.location.country_code",
+      "f1": 0.98989898989899,
+      "precision": 1.0,
+      "recall": 0.98,
+      "support": 100
+    },
+    {
+      "class": "geography.location.region",
+      "f1": 0.9197860962566845,
+      "precision": 0.9885057471264368,
+      "recall": 0.86,
+      "support": 100
+    },
+    {
+      "class": "geography.transportation.iata_code",
+      "f1": 0.9847715736040609,
+      "precision": 1.0,
+      "recall": 0.97,
+      "support": 100
+    },
+    {
+      "class": "geography.transportation.icao_code",
+      "f1": 0.9949748743718593,
+      "precision": 1.0,
+      "recall": 0.99,
+      "support": 100
+    },
+    {
+      "class": "identity.academic.degree",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.academic.university",
+      "f1": 0.9433962264150945,
+      "precision": 0.8928571428571429,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.payment.bitcoin_address",
+      "f1": 0.7634854771784233,
+      "precision": 0.6524822695035462,
+      "recall": 0.92,
+      "support": 100
+    },
+    {
+      "class": "identity.payment.credit_card_expiration_date",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.payment.credit_card_network",
+      "f1": 0.9950248756218906,
+      "precision": 0.9900990099009901,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.payment.credit_card_number",
+      "f1": 0.1592920353982301,
+      "precision": 0.6923076923076923,
+      "recall": 0.09,
+      "support": 100
+    },
+    {
+      "class": "identity.payment.cvv",
+      "f1": 0.8369565217391305,
+      "precision": 0.9166666666666666,
+      "recall": 0.77,
+      "support": 100
+    },
+    {
+      "class": "identity.payment.ethereum_address",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.payment.paypal_email",
+      "f1": 0.8032128514056226,
+      "precision": 0.6711409395973155,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.person.age",
+      "f1": 0.7607361963190183,
+      "precision": 0.9841269841269841,
+      "recall": 0.62,
+      "support": 100
+    },
+    {
+      "class": "identity.person.blood_type",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.person.email",
+      "f1": 0.6754966887417219,
+      "precision": 1.0,
+      "recall": 0.51,
+      "support": 100
+    },
+    {
+      "class": "identity.person.first_name",
+      "f1": 0.98989898989899,
+      "precision": 1.0,
+      "recall": 0.98,
+      "support": 100
+    },
+    {
+      "class": "identity.person.full_name",
+      "f1": 0.9304812834224598,
+      "precision": 1.0,
+      "recall": 0.87,
+      "support": 100
+    },
+    {
+      "class": "identity.person.gender",
+      "f1": 0.9569377990430622,
+      "precision": 0.9174311926605505,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.person.gender_code",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.person.gender_symbol",
+      "f1": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "support": 100
+    },
+    {
+      "class": "identity.person.height",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.person.last_name",
+      "f1": 0.9801980198019802,
+      "precision": 0.9705882352941176,
+      "recall": 0.99,
+      "support": 100
+    },
+    {
+      "class": "identity.person.nationality",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "identity.person.occupation",
+      "f1": 0.9528795811518325,
+      "precision": 1.0,
+      "recall": 0.91,
+      "support": 100
+    },
+    {
+      "class": "identity.person.phone_number",
+      "f1": 0.98989898989899,
+      "precision": 1.0,
+      "recall": 0.98,
+      "support": 100
+    },
+    {
+      "class": "identity.person.username",
+      "f1": 0.8826815642458101,
+      "precision": 1.0,
+      "recall": 0.79,
+      "support": 100
+    },
+    {
+      "class": "identity.person.weight",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.file.extension",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.file.file_size",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.file.mime_type",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.numeric.decimal_number",
+      "f1": 0.8287292817679557,
+      "precision": 0.9259259259259259,
+      "recall": 0.75,
+      "support": 100
+    },
+    {
+      "class": "representation.numeric.increment",
+      "f1": 0.36305732484076425,
+      "precision": 0.26635514018691586,
+      "recall": 0.57,
+      "support": 100
+    },
+    {
+      "class": "representation.numeric.integer_number",
+      "f1": 0.5889570552147239,
+      "precision": 0.7619047619047619,
+      "recall": 0.48,
+      "support": 100
+    },
+    {
+      "class": "representation.numeric.percentage",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.numeric.scientific_notation",
+      "f1": 0.9950248756218906,
+      "precision": 0.9900990099009901,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.scientific.dna_sequence",
+      "f1": 0.99,
+      "precision": 0.99,
+      "recall": 0.99,
+      "support": 100
+    },
+    {
+      "class": "representation.scientific.measurement_unit",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.scientific.metric_prefix",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.scientific.protein_sequence",
+      "f1": 0.99,
+      "precision": 0.99,
+      "recall": 0.99,
+      "support": 100
+    },
+    {
+      "class": "representation.scientific.rna_sequence",
+      "f1": 0.9950248756218906,
+      "precision": 0.9900990099009901,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.text.color_hex",
+      "f1": 0.9797979797979798,
+      "precision": 0.9897959183673469,
+      "recall": 0.97,
+      "support": 100
+    },
+    {
+      "class": "representation.text.color_rgb",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.text.emoji",
+      "f1": 0.6666666666666666,
+      "precision": 0.5,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "representation.text.sentence",
+      "f1": 0.9743589743589743,
+      "precision": 1.0,
+      "recall": 0.95,
+      "support": 100
+    },
+    {
+      "class": "representation.text.word",
+      "f1": 0.99009900990099,
+      "precision": 0.9803921568627451,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.code.ean",
+      "f1": 0.5128205128205129,
+      "precision": 0.5263157894736842,
+      "recall": 0.5,
+      "support": 100
+    },
+    {
+      "class": "technology.code.imei",
+      "f1": 0.4378378378378378,
+      "precision": 0.3,
+      "recall": 0.81,
+      "support": 100
+    },
+    {
+      "class": "technology.code.isbn",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.code.issn",
+      "f1": 0.9801980198019802,
+      "precision": 0.9705882352941176,
+      "recall": 0.99,
+      "support": 100
+    },
+    {
+      "class": "technology.code.locale_code",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.code.pin",
+      "f1": 0.07692307692307693,
+      "precision": 1.0,
+      "recall": 0.04,
+      "support": 100
+    },
+    {
+      "class": "technology.cryptographic.hash",
+      "f1": 0.6698564593301436,
+      "precision": 0.6422018348623854,
+      "recall": 0.7,
+      "support": 100
+    },
+    {
+      "class": "technology.cryptographic.token_hex",
+      "f1": 0.631578947368421,
+      "precision": 0.6666666666666666,
+      "recall": 0.6,
+      "support": 100
+    },
+    {
+      "class": "technology.cryptographic.token_urlsafe",
+      "f1": 0.6329113924050632,
+      "precision": 0.8620689655172413,
+      "recall": 0.5,
+      "support": 100
+    },
+    {
+      "class": "technology.cryptographic.uuid",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.development.boolean",
+      "f1": 0.9803921568627451,
+      "precision": 0.9615384615384616,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.development.calver",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.development.os",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.development.programming_language",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.development.software_license",
+      "f1": 0.9361702127659575,
+      "precision": 1.0,
+      "recall": 0.88,
+      "support": 100
+    },
+    {
+      "class": "technology.development.stage",
+      "f1": 0.9950248756218906,
+      "precision": 0.9900990099009901,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.development.version",
+      "f1": 0.99009900990099,
+      "precision": 0.9803921568627451,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.hardware.cpu",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.hardware.generation",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.hardware.ram_size",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.hardware.screen_size",
+      "f1": 0.99009900990099,
+      "precision": 0.9803921568627451,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.hostname",
+      "f1": 0.9615384615384615,
+      "precision": 0.9259259259259259,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.http_method",
+      "f1": 0.99009900990099,
+      "precision": 0.9803921568627451,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.http_status_code",
+      "f1": 0.966183574879227,
+      "precision": 0.9345794392523364,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.ip_v4",
+      "f1": 0.98989898989899,
+      "precision": 1.0,
+      "recall": 0.98,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.ip_v4_with_port",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.ip_v6",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.mac_address",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.port",
+      "f1": 0.05357142857142856,
+      "precision": 0.25,
+      "recall": 0.03,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.slug",
+      "f1": 0.9468599033816426,
+      "precision": 0.9158878504672897,
+      "recall": 0.98,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.top_level_domain",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.uri",
+      "f1": 0.9174311926605504,
+      "precision": 0.847457627118644,
+      "recall": 1.0,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.url",
+      "f1": 0.9010989010989011,
+      "precision": 1.0,
+      "recall": 0.82,
+      "support": 100
+    },
+    {
+      "class": "technology.internet.user_agent",
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 100
+    }
+  ],
+  "top3_accuracy": 0.9853691275167785,
+  "top_confusions": [
+    {
+      "actual": "identity.person.gender_symbol",
+      "count": 100,
+      "predicted": "representation.text.emoji"
+    },
+    {
+      "actual": "datetime.timestamp.iso_8601_offset",
+      "count": 99,
+      "predicted": "datetime.timestamp.rfc_3339"
+    },
+    {
+      "actual": "identity.payment.credit_card_number",
+      "count": 83,
+      "predicted": "technology.code.imei"
+    },
+    {
+      "actual": "technology.code.pin",
+      "count": 60,
+      "predicted": "geography.address.street_number"
+    },
+    {
+      "actual": "technology.internet.port",
+      "count": 57,
+      "predicted": "representation.numeric.increment"
+    },
+    {
+      "actual": "datetime.epoch.unix_microseconds",
+      "count": 51,
+      "predicted": "technology.code.imei"
+    },
+    {
+      "actual": "identity.person.email",
+      "count": 49,
+      "predicted": "identity.payment.paypal_email"
+    },
+    {
+      "actual": "technology.cryptographic.token_urlsafe",
+      "count": 49,
+      "predicted": "identity.payment.bitcoin_address"
+    },
+    {
+      "actual": "geography.coordinate.longitude",
+      "count": 45,
+      "predicted": "geography.coordinate.latitude"
+    },
+    {
+      "actual": "geography.address.postal_code",
+      "count": 45,
+      "predicted": "representation.numeric.increment"
+    },
+    {
+      "actual": "datetime.date.us_slash",
+      "count": 40,
+      "predicted": "datetime.date.eu_slash"
+    },
+    {
+      "actual": "technology.cryptographic.token_hex",
+      "count": 39,
+      "predicted": "technology.cryptographic.hash"
+    },
+    {
+      "actual": "identity.person.age",
+      "count": 36,
+      "predicted": "datetime.component.day_of_month"
+    },
+    {
+      "actual": "technology.code.ean",
+      "count": 35,
+      "predicted": "technology.code.imei"
+    },
+    {
+      "actual": "datetime.date.compact_mdy",
+      "count": 34,
+      "predicted": "datetime.date.compact_dmy"
+    },
+    {
+      "actual": "representation.numeric.integer_number",
+      "count": 30,
+      "predicted": "representation.numeric.increment"
+    },
+    {
+      "actual": "technology.cryptographic.hash",
+      "count": 30,
+      "predicted": "technology.cryptographic.token_hex"
+    },
+    {
+      "actual": "datetime.date.short_dmy",
+      "count": 28,
+      "predicted": "datetime.date.short_mdy"
+    },
+    {
+      "actual": "technology.internet.port",
+      "count": 28,
+      "predicted": "geography.address.postal_code"
+    },
+    {
+      "actual": "datetime.date.short_mdy",
+      "count": 26,
+      "predicted": "datetime.date.short_dmy"
+    }
+  ],
+  "total_samples": 14900
+}
