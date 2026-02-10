@@ -330,7 +330,7 @@ fn disambiguate_coordinates(values: &[String]) -> Option<String> {
 
 /// Disambiguate numeric types based on value range and distribution.
 ///
-/// Covers: port, increment, postal_code, integer_number, street_number
+/// Covers: port, increment, postal_code, integer_number, street_number, year
 fn disambiguate_numeric(
     values: &[String],
     results: &[ClassificationResult],
@@ -341,8 +341,10 @@ fn disambiguate_numeric(
         "technology.internet.port",
         "representation.numeric.increment",
         "representation.numeric.integer_number",
+        "representation.numeric.decimal_number",
         "geography.address.postal_code",
         "geography.address.street_number",
+        "datetime.component.year",
     ];
 
     let has_numeric_confusion = top_labels.iter().any(|l| numeric_types.contains(l));
@@ -409,7 +411,29 @@ fn disambiguate_numeric(
         false
     };
 
-    // Decision logic
+    // Year detection: 4-digit integers in 1900-2100 range
+    let year_candidates: Vec<i64> = parsed
+        .iter()
+        .filter(|&&v| (1900..=2100).contains(&v))
+        .copied()
+        .collect();
+    let all_trimmed_4digit = values.iter().all(|v| {
+        let t = v.trim();
+        t.len() == 4 && t.chars().all(|c| c.is_ascii_digit())
+    });
+    let is_year_column =
+        year_candidates.len() == parsed.len() && parsed.len() >= 3 && all_trimmed_4digit;
+
+    // Decision logic — year check BEFORE sequential, because a column of
+    // years (e.g., 2018, 2019, 2020) is more likely to be years than IDs.
+    if is_year_column {
+        // All values are 4-digit integers in 1900-2100 range → year
+        return Some((
+            "datetime.component.year".to_string(),
+            "numeric_year_detection".to_string(),
+        ));
+    }
+
     if is_sequential && min >= 0 && range > 0 {
         // Sequential integers → increment
         return Some((
@@ -645,6 +669,192 @@ mod tests {
         assert!(result.is_some());
         let (label, _rule) = result.unwrap();
         assert_eq!(label, "geography.address.postal_code");
+    }
+
+    #[test]
+    fn test_year_detection() {
+        let values: Vec<String> = vec![
+            "2020", "2019", "2021", "2018", "2023", "2015", "2022", "2017", "2024", "2016",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+
+        let results: Vec<ClassificationResult> = values
+            .iter()
+            .map(|_| ClassificationResult {
+                label: "representation.numeric.integer_number".to_string(),
+                confidence: 0.6,
+                all_scores: vec![],
+            })
+            .collect();
+
+        let votes = vec![
+            ("representation.numeric.integer_number".to_string(), 5),
+            ("geography.address.street_number".to_string(), 3),
+            ("datetime.component.year".to_string(), 2),
+        ];
+        let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
+
+        let result = disambiguate_numeric(&values, &results, &top_labels);
+        assert!(result.is_some());
+        let (label, rule) = result.unwrap();
+        assert_eq!(label, "datetime.component.year");
+        assert_eq!(rule, "numeric_year_detection");
+    }
+
+    #[test]
+    fn test_year_detection_historical() {
+        // Historical years in typical range
+        let values: Vec<String> = vec!["1945", "1918", "1969", "1989", "2001"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+
+        let results: Vec<ClassificationResult> = values
+            .iter()
+            .map(|_| ClassificationResult {
+                label: "representation.numeric.decimal_number".to_string(),
+                confidence: 0.5,
+                all_scores: vec![],
+            })
+            .collect();
+
+        let votes = vec![
+            ("representation.numeric.decimal_number".to_string(), 3),
+            ("representation.numeric.integer_number".to_string(), 2),
+        ];
+        let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
+
+        let result = disambiguate_numeric(&values, &results, &top_labels);
+        assert!(result.is_some());
+        let (label, _) = result.unwrap();
+        assert_eq!(label, "datetime.component.year");
+    }
+
+    #[test]
+    fn test_year_not_triggered_for_5digit_postal() {
+        // 5-digit postal codes should NOT trigger year rule
+        let values: Vec<String> = vec![
+            "10001", "90210", "30301", "60601", "02101", "75001", "33101", "94102", "20001",
+            "98101",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+
+        let results: Vec<ClassificationResult> = values
+            .iter()
+            .map(|_| ClassificationResult {
+                label: "geography.address.postal_code".to_string(),
+                confidence: 0.6,
+                all_scores: vec![],
+            })
+            .collect();
+
+        let votes = vec![
+            ("geography.address.postal_code".to_string(), 6),
+            ("representation.numeric.integer_number".to_string(), 4),
+        ];
+        let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
+
+        let result = disambiguate_numeric(&values, &results, &top_labels);
+        assert!(result.is_some());
+        let (label, _) = result.unwrap();
+        // Should be postal_code, NOT year (5-digit values)
+        assert_eq!(label, "geography.address.postal_code");
+    }
+
+    #[test]
+    fn test_sequential_years_still_detected_as_year() {
+        // Sequential 4-digit numbers in year range → still year (more likely
+        // a column of consecutive years than auto-increment IDs starting at 2001)
+        let values: Vec<String> = vec![
+            "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+
+        let results: Vec<ClassificationResult> = values
+            .iter()
+            .map(|_| ClassificationResult {
+                label: "representation.numeric.increment".to_string(),
+                confidence: 0.7,
+                all_scores: vec![],
+            })
+            .collect();
+
+        let votes = vec![
+            ("representation.numeric.increment".to_string(), 7),
+            ("representation.numeric.integer_number".to_string(), 3),
+        ];
+        let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
+
+        let result = disambiguate_numeric(&values, &results, &top_labels);
+        assert!(result.is_some());
+        let (label, _) = result.unwrap();
+        // Year wins over increment when values are in 1900-2100 range
+        assert_eq!(label, "datetime.component.year");
+    }
+
+    #[test]
+    fn test_sequential_non_year_still_increment() {
+        // Sequential numbers outside year range → increment
+        let values: Vec<String> = vec!["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+
+        let results: Vec<ClassificationResult> = values
+            .iter()
+            .map(|_| ClassificationResult {
+                label: "representation.numeric.increment".to_string(),
+                confidence: 0.8,
+                all_scores: vec![],
+            })
+            .collect();
+
+        let votes = vec![
+            ("representation.numeric.increment".to_string(), 8),
+            ("representation.numeric.integer_number".to_string(), 2),
+        ];
+        let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
+
+        let result = disambiguate_numeric(&values, &results, &top_labels);
+        assert!(result.is_some());
+        let (label, _) = result.unwrap();
+        assert_eq!(label, "representation.numeric.increment");
+    }
+
+    #[test]
+    fn test_year_not_triggered_for_ports() {
+        // Port numbers (some happen to be in year range but have common ports)
+        let values: Vec<String> = vec!["80", "443", "8080", "3306", "22"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+
+        let results: Vec<ClassificationResult> = values
+            .iter()
+            .map(|_| ClassificationResult {
+                label: "technology.internet.port".to_string(),
+                confidence: 0.8,
+                all_scores: vec![],
+            })
+            .collect();
+
+        let votes = vec![
+            ("technology.internet.port".to_string(), 4),
+            ("representation.numeric.integer_number".to_string(), 1),
+        ];
+        let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
+
+        let result = disambiguate_numeric(&values, &results, &top_labels);
+        // Should NOT be year (values are 2-4 digits, not all 4-digit)
+        if let Some((label, _)) = result {
+            assert_ne!(label, "datetime.component.year");
+        }
     }
 
     #[test]
