@@ -2,8 +2,8 @@
 //!
 //! Provides scalar functions for semantic type classification:
 //! - `finetype_version()` — Returns the extension version
-//! - `finetype(value)` — Classify a single value (planned)
-//! - `finetype_profile(col)` — Profile a column with distribution analysis (planned)
+//! - `finetype(value)` — Classify a single value, returns the semantic type label
+//! - `finetype_detail(value)` — Classify with detail: returns JSON with type, confidence, DuckDB type
 
 use duckdb::core::{DataChunkHandle, Inserter, LogicalTypeHandle, LogicalTypeId};
 use duckdb::vscalar::{ScalarFunctionSignature, VScalar};
@@ -12,17 +12,97 @@ use duckdb::{duckdb_entrypoint_c_api, Result};
 use std::error::Error;
 use std::ffi::CString;
 
+mod type_mapping;
+
 // ═══════════════════════════════════════════════════════════════════════════════
-// EMBEDDED RESOURCES
+// EMBEDDED MODELS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// Embed the tier_graph.json metadata at compile time.
-/// The actual model weights (.safetensors) will be embedded when models are finalized.
 #[cfg(feature = "embed-models")]
-const _TIER_GRAPH_JSON: &[u8] = include_bytes!("../../../models/tiered/tier_graph.json");
+mod embedded {
+    include!(concat!(env!("OUT_DIR"), "/embedded_models.rs"));
+}
 
 /// Extension name and version.
 const EXTENSION_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GLOBAL CLASSIFIER (lazy-initialized on first use)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[cfg(feature = "embed-models")]
+use std::sync::OnceLock;
+
+/// Global flat classifier, initialized on first finetype() call.
+/// Uses the single-pass CharCNN model (91.97% accuracy, ~100x faster than tiered).
+#[cfg(feature = "embed-models")]
+static CLASSIFIER: OnceLock<finetype_model::CharClassifier> = OnceLock::new();
+
+/// Initialize or get the global classifier from embedded flat model.
+#[cfg(feature = "embed-models")]
+fn get_classifier() -> &'static finetype_model::CharClassifier {
+    CLASSIFIER.get_or_init(|| {
+        finetype_model::CharClassifier::from_bytes(
+            embedded::FLAT_WEIGHTS,
+            embedded::FLAT_LABELS,
+            embedded::FLAT_CONFIG,
+        )
+        .expect("Failed to load embedded flat model")
+    })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VARCHAR HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Read a VARCHAR value from a DuckDB data chunk at a specific column and row.
+///
+/// Returns None if the value is NULL.
+#[cfg(feature = "embed-models")]
+unsafe fn read_varchar(
+    input: &mut DataChunkHandle,
+    col_idx: usize,
+    row_idx: usize,
+) -> Option<String> {
+    use libduckdb_sys::*;
+
+    let raw_chunk = input.get_ptr();
+    let vector = duckdb_data_chunk_get_vector(raw_chunk, col_idx as idx_t);
+
+    // Check validity (NULL check)
+    let validity = duckdb_vector_get_validity(vector);
+    if !validity.is_null() {
+        let entry = row_idx / 64;
+        let bit = row_idx % 64;
+        let mask = *validity.add(entry);
+        if (mask >> bit) & 1 == 0 {
+            return None;
+        }
+    }
+
+    // Read string data
+    let data = duckdb_vector_get_data(vector) as *const duckdb_string_t;
+    let str_val = *data.add(row_idx);
+
+    let (ptr, len) = if duckdb_string_is_inlined(str_val) {
+        (
+            str_val.value.inlined.inlined.as_ptr() as *const u8,
+            str_val.value.inlined.length as usize,
+        )
+    } else {
+        (
+            str_val.value.pointer.ptr as *const u8,
+            str_val.value.pointer.length as usize,
+        )
+    };
+
+    if ptr.is_null() || len == 0 {
+        return Some(String::new());
+    }
+
+    let bytes = std::slice::from_raw_parts(ptr, len);
+    std::str::from_utf8(bytes).ok().map(|s| s.to_string())
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SCALAR FUNCTIONS
@@ -56,6 +136,117 @@ impl VScalar for FineTypeVersion {
     }
 }
 
+/// `finetype(value VARCHAR) → VARCHAR` — Classify a single value.
+///
+/// Returns the full semantic type label (e.g. "technology.internet.url",
+/// "datetime.date.iso", "identity.person.email").
+#[cfg(feature = "embed-models")]
+struct FineType;
+
+#[cfg(feature = "embed-models")]
+impl VScalar for FineType {
+    type State = ();
+
+    unsafe fn invoke(
+        _state: &Self::State,
+        input: &mut DataChunkHandle,
+        output: &mut dyn WritableVector,
+    ) -> Result<(), Box<dyn Error>> {
+        let classifier = get_classifier();
+        let len = input.len();
+        let output_vec = output.flat_vector();
+
+        // Collect non-null values for batch inference
+        let mut indices: Vec<usize> = Vec::with_capacity(len);
+        let mut texts: Vec<String> = Vec::with_capacity(len);
+
+        for i in 0..len {
+            if let Some(text) = read_varchar(input, 0, i) {
+                if !text.is_empty() {
+                    indices.push(i);
+                    texts.push(text);
+                } else {
+                    // Empty string → unknown
+                    let cstr = CString::new("unknown")?;
+                    output_vec.insert(i, cstr);
+                }
+            }
+            // NULL values: DuckDB handles NULL propagation for scalar functions
+        }
+
+        // Batch classify all non-null, non-empty values
+        if !texts.is_empty() {
+            let results = classifier.classify_batch(&texts)?;
+            for (idx, result) in indices.iter().zip(results.iter()) {
+                let label = CString::new(result.label.as_str())?;
+                output_vec.insert(*idx, label);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn signatures() -> Vec<ScalarFunctionSignature> {
+        vec![ScalarFunctionSignature::exact(
+            vec![LogicalTypeHandle::from(LogicalTypeId::Varchar)],
+            LogicalTypeHandle::from(LogicalTypeId::Varchar),
+        )]
+    }
+}
+
+/// `finetype_detail(value VARCHAR) → VARCHAR` — Classify with full detail.
+///
+/// Returns a JSON object with:
+/// - `type`: semantic type label
+/// - `confidence`: model confidence (0.0 to 1.0)
+/// - `duckdb_type`: recommended DuckDB CAST target type
+#[cfg(feature = "embed-models")]
+struct FineTypeDetail;
+
+#[cfg(feature = "embed-models")]
+impl VScalar for FineTypeDetail {
+    type State = ();
+
+    unsafe fn invoke(
+        _state: &Self::State,
+        input: &mut DataChunkHandle,
+        output: &mut dyn WritableVector,
+    ) -> Result<(), Box<dyn Error>> {
+        let classifier = get_classifier();
+        let len = input.len();
+        let output_vec = output.flat_vector();
+
+        for i in 0..len {
+            if let Some(text) = read_varchar(input, 0, i) {
+                if text.is_empty() {
+                    let cstr = CString::new(
+                        r#"{"type":"unknown","confidence":0.0,"duckdb_type":"VARCHAR"}"#,
+                    )?;
+                    output_vec.insert(i, cstr);
+                    continue;
+                }
+                let result = classifier.classify(&text)?;
+                let duckdb_type = type_mapping::to_duckdb_type(&result.label);
+                let json = format!(
+                    r#"{{"type":"{}","confidence":{:.4},"duckdb_type":"{}"}}"#,
+                    result.label, result.confidence, duckdb_type
+                );
+                let cstr = CString::new(json)?;
+                output_vec.insert(i, cstr);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn signatures() -> Vec<ScalarFunctionSignature> {
+        vec![ScalarFunctionSignature::exact(
+            vec![LogicalTypeHandle::from(LogicalTypeId::Varchar)],
+            LogicalTypeHandle::from(LogicalTypeId::Varchar),
+        )]
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXTENSION ENTRYPOINT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -68,6 +259,15 @@ impl VScalar for FineTypeVersion {
 pub unsafe fn extension_entrypoint(con: duckdb::Connection) -> Result<(), Box<dyn Error>> {
     con.register_scalar_function::<FineTypeVersion>("finetype_version")
         .expect("Failed to register finetype_version");
+
+    #[cfg(feature = "embed-models")]
+    {
+        con.register_scalar_function::<FineType>("finetype")
+            .expect("Failed to register finetype");
+
+        con.register_scalar_function::<FineTypeDetail>("finetype_detail")
+            .expect("Failed to register finetype_detail");
+    }
 
     Ok(())
 }

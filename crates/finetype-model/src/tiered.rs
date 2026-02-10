@@ -281,6 +281,80 @@ impl TieredClassifier {
         Ok(results)
     }
 
+    /// Load a tiered classifier from embedded byte slices.
+    ///
+    /// This is used by the DuckDB extension where models are compiled into the binary
+    /// via `include_bytes!`. The `get_data` function maps directory names to byte slices
+    /// for (weights, labels_json, config_yaml).
+    /// Type alias for the embedded model data lookup function.
+    #[allow(clippy::type_complexity)]
+    pub fn from_embedded(
+        graph_json: &[u8],
+        get_data: fn(&str) -> Option<(&'static [u8], &'static [u8], &'static [u8])>,
+    ) -> Result<Self, InferenceError> {
+        let device = Self::get_device();
+
+        let graph_str = std::str::from_utf8(graph_json).map_err(|e| {
+            InferenceError::InvalidPath(format!("Invalid UTF-8 in tier_graph.json: {}", e))
+        })?;
+        let graph_meta: TierGraphMeta = serde_json::from_str(graph_str).map_err(|e| {
+            InferenceError::InvalidPath(format!("Failed to parse tier_graph.json: {}", e))
+        })?;
+
+        // Load Tier 0
+        let tier0_dir = &graph_meta.tier0.dir;
+        let (w, l, c) = get_data(tier0_dir).ok_or_else(|| {
+            InferenceError::InvalidPath(format!("Missing embedded data for {}", tier0_dir))
+        })?;
+        let tier0 = Self::load_model_from_bytes(w, l, c, &device)?;
+
+        // Load Tier 1 models
+        let mut tier1 = HashMap::new();
+        let mut tier1_direct = HashMap::new();
+
+        for (broad_type, meta) in &graph_meta.tier1 {
+            if let Some(dir) = &meta.dir {
+                let (w, l, c) = get_data(dir).ok_or_else(|| {
+                    InferenceError::InvalidPath(format!("Missing embedded data for {}", dir))
+                })?;
+                let model = Self::load_model_from_bytes(w, l, c, &device)?;
+                tier1.insert(broad_type.clone(), model);
+            } else if let Some(direct) = &meta.direct {
+                tier1_direct.insert(broad_type.clone(), direct.clone());
+            }
+        }
+
+        // Load Tier 2 models
+        let mut tier2 = HashMap::new();
+        let mut tier2_direct = HashMap::new();
+
+        for (key, meta) in &graph_meta.tier2 {
+            if let Some(dir) = &meta.dir {
+                let (w, l, c) = get_data(dir).ok_or_else(|| {
+                    InferenceError::InvalidPath(format!("Missing embedded data for {}", dir))
+                })?;
+                let model = Self::load_model_from_bytes(w, l, c, &device)?;
+                tier2.insert(key.clone(), model);
+            } else if let Some(direct) = &meta.direct {
+                tier2_direct.insert(key.clone(), direct.clone());
+            }
+        }
+
+        let vocab = CharVocab::new();
+        let max_seq_length = 128;
+
+        Ok(Self {
+            tier0,
+            tier1,
+            tier1_direct,
+            tier2,
+            tier2_direct,
+            vocab,
+            device,
+            max_seq_length,
+        })
+    }
+
     /// Load a CharCNN model from a directory.
     fn load_model(model_dir: &Path, device: &Device) -> Result<LoadedModel, InferenceError> {
         // Load labels
@@ -294,50 +368,66 @@ impl TieredClassifier {
         let labels: Vec<String> = serde_json::from_str(&content).map_err(|e| {
             InferenceError::InvalidPath(format!("Failed to parse labels.json: {}", e))
         })?;
+
+        // Load config
+        let config_path = model_dir.join("config.yaml");
+        let config_str = if config_path.exists() {
+            std::fs::read_to_string(&config_path)?
+        } else {
+            String::new()
+        };
+
+        // Load weights
+        let weights_path = model_dir.join("model.safetensors");
+        let weights_bytes = std::fs::read(&weights_path).map_err(|e| {
+            InferenceError::InvalidPath(format!(
+                "Failed to read model.safetensors in {:?}: {}",
+                model_dir, e
+            ))
+        })?;
+
+        Self::build_model(&labels, &config_str, &weights_bytes, device)
+    }
+
+    /// Load a CharCNN model from embedded byte slices.
+    fn load_model_from_bytes(
+        weights: &[u8],
+        labels_json: &[u8],
+        config_yaml: &[u8],
+        device: &Device,
+    ) -> Result<LoadedModel, InferenceError> {
+        let labels_str = std::str::from_utf8(labels_json).map_err(|e| {
+            InferenceError::InvalidPath(format!("Invalid UTF-8 in labels.json: {}", e))
+        })?;
+        let labels: Vec<String> = serde_json::from_str(labels_str).map_err(|e| {
+            InferenceError::InvalidPath(format!("Failed to parse labels.json: {}", e))
+        })?;
+
+        let config_str = std::str::from_utf8(config_yaml).unwrap_or("");
+
+        Self::build_model(&labels, config_str, weights, device)
+    }
+
+    /// Build a LoadedModel from parsed labels, config string, and weight bytes.
+    fn build_model(
+        labels: &[String],
+        config_str: &str,
+        weights: &[u8],
+        device: &Device,
+    ) -> Result<LoadedModel, InferenceError> {
         let n_classes = labels.len();
 
         let index_to_label: HashMap<usize, String> = labels.iter().cloned().enumerate().collect();
         let label_to_index: HashMap<String, usize> = labels
-            .into_iter()
+            .iter()
+            .cloned()
             .enumerate()
             .map(|(i, l)| (l, i))
             .collect();
 
-        // Load config
-        let config_path = model_dir.join("config.yaml");
+        // Parse config
         let (vocab_size, max_seq_length, embed_dim, num_filters, hidden_dim) =
-            if config_path.exists() {
-                let config_str = std::fs::read_to_string(&config_path)?;
-                let mut vocab_size = 97usize;
-                let mut max_seq_length = 128usize;
-                let mut embed_dim = 32usize;
-                let mut num_filters = 64usize;
-                let mut hidden_dim = 128usize;
-
-                for line in config_str.lines() {
-                    if let Some((key, val)) = line.split_once(':') {
-                        let key = key.trim();
-                        let val = val.trim();
-                        match key {
-                            "vocab_size" => vocab_size = val.parse().unwrap_or(97),
-                            "max_seq_length" => max_seq_length = val.parse().unwrap_or(128),
-                            "embed_dim" => embed_dim = val.parse().unwrap_or(32),
-                            "num_filters" => num_filters = val.parse().unwrap_or(64),
-                            "hidden_dim" => hidden_dim = val.parse().unwrap_or(128),
-                            _ => {}
-                        }
-                    }
-                }
-                (
-                    vocab_size,
-                    max_seq_length,
-                    embed_dim,
-                    num_filters,
-                    hidden_dim,
-                )
-            } else {
-                (97, 128, 32, 64, 128)
-            };
+            parse_config_yaml(config_str);
 
         let config = CharCnnConfig {
             vocab_size,
@@ -350,10 +440,7 @@ impl TieredClassifier {
             dropout: 0.0,
         };
 
-        let weights_path = model_dir.join("model.safetensors");
-        let vb =
-            unsafe { VarBuilder::from_mmaped_safetensors(&[weights_path], DType::F32, device)? };
-
+        let vb = VarBuilder::from_buffered_safetensors(weights.to_vec(), DType::F32, device)?;
         let model = CharCnn::new(config, vb)?;
 
         Ok(LoadedModel {
@@ -381,4 +468,36 @@ impl TieredClassifier {
 
         Device::Cpu
     }
+}
+
+/// Parse a config.yaml string into model hyperparameters.
+fn parse_config_yaml(config_str: &str) -> (usize, usize, usize, usize, usize) {
+    let mut vocab_size = 97usize;
+    let mut max_seq_length = 128usize;
+    let mut embed_dim = 32usize;
+    let mut num_filters = 64usize;
+    let mut hidden_dim = 128usize;
+
+    for line in config_str.lines() {
+        if let Some((key, val)) = line.split_once(':') {
+            let key = key.trim();
+            let val = val.trim();
+            match key {
+                "vocab_size" => vocab_size = val.parse().unwrap_or(97),
+                "max_seq_length" => max_seq_length = val.parse().unwrap_or(128),
+                "embed_dim" => embed_dim = val.parse().unwrap_or(32),
+                "num_filters" => num_filters = val.parse().unwrap_or(64),
+                "hidden_dim" => hidden_dim = val.parse().unwrap_or(128),
+                _ => {}
+            }
+        }
+    }
+
+    (
+        vocab_size,
+        max_seq_length,
+        embed_dim,
+        num_filters,
+        hidden_dim,
+    )
 }

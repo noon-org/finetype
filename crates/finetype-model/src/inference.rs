@@ -208,6 +208,73 @@ pub struct CharClassifier {
 }
 
 impl CharClassifier {
+    /// Load a CharCNN classifier from embedded byte slices.
+    ///
+    /// Used by the DuckDB extension where model files are compiled into the binary.
+    pub fn from_bytes(
+        weights: &[u8],
+        labels_json: &[u8],
+        config_yaml: &[u8],
+    ) -> Result<Self, InferenceError> {
+        let device = Self::get_device();
+
+        // Parse labels
+        let labels_str = std::str::from_utf8(labels_json).map_err(|e| {
+            InferenceError::InvalidPath(format!("Invalid UTF-8 in labels.json: {}", e))
+        })?;
+        let labels: Vec<String> = serde_json::from_str(labels_str).map_err(|e| {
+            InferenceError::InvalidPath(format!("Failed to parse labels.json: {}", e))
+        })?;
+        let n_classes = labels.len();
+        let index_to_label: HashMap<usize, String> = labels.into_iter().enumerate().collect();
+
+        // Parse config
+        let config_str = std::str::from_utf8(config_yaml).unwrap_or("");
+        let mut vocab_size = 97usize;
+        let mut max_seq_length = 128usize;
+        let mut embed_dim = 32usize;
+        let mut num_filters = 64usize;
+        let mut hidden_dim = 128usize;
+
+        for line in config_str.lines() {
+            if let Some((key, val)) = line.split_once(':') {
+                let key = key.trim();
+                let val = val.trim();
+                match key {
+                    "vocab_size" => vocab_size = val.parse().unwrap_or(97),
+                    "max_seq_length" => max_seq_length = val.parse().unwrap_or(128),
+                    "embed_dim" => embed_dim = val.parse().unwrap_or(32),
+                    "num_filters" => num_filters = val.parse().unwrap_or(64),
+                    "hidden_dim" => hidden_dim = val.parse().unwrap_or(128),
+                    _ => {}
+                }
+            }
+        }
+
+        let vocab = CharVocab::new();
+        let config = CharCnnConfig {
+            vocab_size,
+            max_seq_length,
+            embed_dim,
+            num_filters,
+            kernel_sizes: vec![2, 3, 4, 5],
+            hidden_dim,
+            n_classes,
+            dropout: 0.0,
+        };
+
+        let vb = VarBuilder::from_buffered_safetensors(weights.to_vec(), DType::F32, &device)?;
+        let model = CharCnn::new(config, vb)?;
+
+        Ok(Self {
+            model,
+            vocab,
+            index_to_label,
+            device,
+            max_seq_length,
+        })
+    }
+
     /// Load a CharCNN classifier from a directory.
     pub fn load<P: AsRef<Path>>(model_dir: P) -> Result<Self, InferenceError> {
         let model_dir = model_dir.as_ref();

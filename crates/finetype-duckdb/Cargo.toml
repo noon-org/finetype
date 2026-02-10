@@ -9,6 +9,7 @@ description = "DuckDB extension for semantic type classification"
 crate-type = ["cdylib"]
 
 [features]
+default = ["embed-models"]
 embed-models = []
 
 [dependencies]
