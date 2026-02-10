@@ -1,0 +1,8 @@
+# Downloaded data (reproducible from Zenodo: https://zenodo.org/record/5706316)
+tables/
+tables.zip
+
+# DuckDB artifacts
+.quit
+*.duckdb
+*.wal

@@ -1,0 +1,60 @@
+,annotation_id,annotation_label
+0,schema:abstract,abstract
+1,schema:Action,action
+2,schema:author,author
+3,schema:category,category
+4,schema:City,city
+5,schema:Class,class
+6,schema:Code,code
+7,schema:color,color
+8,schema:comment,comment
+9,schema:contentType,content type
+10,schema:Country,country
+11,schema:dateIssued,date issued
+12,schema:depth,depth
+13,schema:description,description
+14,schema:Duration,duration
+15,schema:email,email
+16,schema:endTime,end time
+17,schema:Event,event
+18,schema:fileFormat,file format
+19,schema:gender,gender
+20,schema:height,height
+21,schema:identifier,id
+22,schema:interactionType,interaction type
+23,schema:language,language
+24,schema:line,line
+25,schema:location,location
+26,schema:manufacturer,manufacturer
+27,schema:members,members
+28,schema:Message,message
+29,schema:name,name
+30,schema:object,object
+31,schema:orderNumber,order number
+32,schema:parent,parent
+33,schema:postalCode,postal code
+34,schema:price,price
+35,schema:producer,producer
+36,schema:Product,product
+37,schema:Project,project
+38,schema:purchaseDate,purchase date
+39,schema:Rating,rating
+40,schema:Role,role
+41,schema:roleName,role name
+42,schema:School,school
+43,schema:serialNumber,serial number
+44,schema:Series,series
+45,schema:size,size
+46,schema:startTime,start time
+47,schema:State,state
+48,schema:status,status
+49,schema:step,step
+50,schema:target,target
+51,schema:Text,text
+52,schema:Time,time
+53,schema:title,title
+54,schema:tool,tool
+55,schema:URL,url
+56,schema:value,value
+57,schema:version,version
+58,schema:width,width

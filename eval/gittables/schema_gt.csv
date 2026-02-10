@@ -1,0 +1,722 @@
+,table_id,target_column,annotation_id,annotation_label
+1814,GitTables_1501_schema,6,schema:author,author
+1815,GitTables_1501_schema,0,schema:identifier,id
+1816,GitTables_1501_schema,3,schema:parent,parent
+1817,GitTables_1501_schema,7,schema:title,title
+1818,GitTables_1501_schema,8,schema:URL,url
+1819,GitTables_1502_schema,6,schema:author,author
+1820,GitTables_1502_schema,0,schema:identifier,id
+1821,GitTables_1502_schema,3,schema:parent,parent
+1822,GitTables_1502_schema,7,schema:title,title
+1823,GitTables_1502_schema,8,schema:URL,url
+1824,GitTables_1503_schema,3,schema:color,color
+1825,GitTables_1503_schema,2,schema:State,state
+1826,GitTables_1503_schema,8,schema:width,width
+1827,GitTables_1504_schema,3,schema:Action,action
+1828,GitTables_1504_schema,2,schema:description,description
+1829,GitTables_1504_schema,0,schema:step,step
+1830,GitTables_1507_schema,1,schema:endTime,end time
+1831,GitTables_1507_schema,4,schema:interactionType,interaction type
+1832,GitTables_1507_schema,0,schema:startTime,start time
+1833,GitTables_1508_schema,1,schema:title,title
+1834,GitTables_1508_schema,5,schema:URL,url
+1835,GitTables_1511_schema,3,schema:color,color
+1836,GitTables_1511_schema,2,schema:State,state
+1837,GitTables_1511_schema,8,schema:width,width
+1838,GitTables_1514_schema,1,schema:endTime,end time
+1839,GitTables_1514_schema,4,schema:interactionType,interaction type
+1840,GitTables_1514_schema,0,schema:startTime,start time
+1841,GitTables_1516_schema,2,schema:Class,class
+1842,GitTables_1517_schema,6,schema:author,author
+1843,GitTables_1517_schema,0,schema:identifier,id
+1844,GitTables_1517_schema,3,schema:parent,parent
+1845,GitTables_1517_schema,7,schema:title,title
+1846,GitTables_1517_schema,8,schema:URL,url
+1847,GitTables_1518_schema,6,schema:author,author
+1848,GitTables_1518_schema,0,schema:identifier,id
+1849,GitTables_1518_schema,3,schema:parent,parent
+1850,GitTables_1518_schema,7,schema:title,title
+1851,GitTables_1518_schema,8,schema:URL,url
+1852,GitTables_1523_schema,0,schema:line,line
+1853,GitTables_1525_schema,2,schema:Class,class
+1854,GitTables_1527_schema,2,schema:status,status
+1855,GitTables_1527_schema,4,schema:URL,url
+1856,GitTables_1529_schema,2,schema:Class,class
+1857,GitTables_1533_schema,6,schema:depth,depth
+1858,GitTables_1533_schema,5,schema:height,height
+1859,GitTables_1533_schema,0,schema:object,object
+1860,GitTables_1533_schema,4,schema:width,width
+1861,GitTables_1537_schema,2,schema:Class,class
+1862,GitTables_1538_schema,4,schema:Class,class
+1863,GitTables_1538_schema,0,schema:Code,code
+1864,GitTables_1539_schema,6,schema:depth,depth
+1865,GitTables_1539_schema,5,schema:height,height
+1866,GitTables_1539_schema,0,schema:object,object
+1867,GitTables_1539_schema,4,schema:width,width
+1868,GitTables_1540_schema,0,schema:Project,project
+1869,GitTables_1541_schema,0,schema:line,line
+1870,GitTables_1544_schema,2,schema:Class,class
+1871,GitTables_1544_schema,5,schema:description,description
+1872,GitTables_1546_schema,3,schema:color,color
+1873,GitTables_1546_schema,2,schema:State,state
+1874,GitTables_1546_schema,8,schema:width,width
+1875,GitTables_1547_schema,2,schema:Class,class
+1876,GitTables_1550_schema,6,schema:author,author
+1877,GitTables_1550_schema,0,schema:identifier,id
+1878,GitTables_1550_schema,3,schema:parent,parent
+1879,GitTables_1550_schema,7,schema:title,title
+1880,GitTables_1550_schema,8,schema:URL,url
+1881,GitTables_1551_schema,6,schema:author,author
+1882,GitTables_1551_schema,0,schema:identifier,id
+1883,GitTables_1551_schema,3,schema:parent,parent
+1884,GitTables_1551_schema,7,schema:title,title
+1885,GitTables_1551_schema,8,schema:URL,url
+1886,GitTables_1553_schema,2,schema:Class,class
+1887,GitTables_1554_schema,0,schema:line,line
+1888,GitTables_1556_schema,6,schema:author,author
+1889,GitTables_1556_schema,0,schema:identifier,id
+1890,GitTables_1556_schema,3,schema:parent,parent
+1891,GitTables_1556_schema,7,schema:title,title
+1892,GitTables_1556_schema,8,schema:URL,url
+1893,GitTables_1560_schema,3,schema:color,color
+1894,GitTables_1560_schema,2,schema:State,state
+1895,GitTables_1560_schema,8,schema:width,width
+1896,GitTables_1562_schema,2,schema:Class,class
+1897,GitTables_1566_schema,5,schema:title,title
+1898,GitTables_1567_schema,39,schema:City,city
+1899,GitTables_1567_schema,4,schema:dateIssued,date issued
+1900,GitTables_1567_schema,40,schema:postalCode,postal code
+1901,GitTables_1567_schema,41,schema:State,state
+1902,GitTables_1567_schema,6,schema:status,status
+1903,GitTables_1569_schema,2,schema:status,status
+1904,GitTables_1569_schema,4,schema:URL,url
+1905,GitTables_1570_schema,2,schema:Class,class
+1906,GitTables_1571_schema,0,schema:line,line
+1907,GitTables_1573_schema,3,schema:color,color
+1908,GitTables_1573_schema,2,schema:State,state
+1909,GitTables_1573_schema,8,schema:width,width
+1910,GitTables_1574_schema,22,schema:Time,time
+1911,GitTables_1576_schema,0,schema:line,line
+1912,GitTables_1577_schema,6,schema:author,author
+1913,GitTables_1577_schema,0,schema:identifier,id
+1914,GitTables_1577_schema,3,schema:parent,parent
+1915,GitTables_1577_schema,7,schema:title,title
+1916,GitTables_1577_schema,8,schema:URL,url
+1917,GitTables_1578_schema,6,schema:author,author
+1918,GitTables_1578_schema,0,schema:identifier,id
+1919,GitTables_1578_schema,3,schema:parent,parent
+1920,GitTables_1578_schema,7,schema:title,title
+1921,GitTables_1578_schema,8,schema:URL,url
+1922,GitTables_1579_schema,0,schema:line,line
+1923,GitTables_1580_schema,0,schema:line,line
+1924,GitTables_1581_schema,0,schema:line,line
+1925,GitTables_1582_schema,6,schema:author,author
+1926,GitTables_1582_schema,0,schema:identifier,id
+1927,GitTables_1582_schema,3,schema:parent,parent
+1928,GitTables_1582_schema,7,schema:title,title
+1929,GitTables_1582_schema,8,schema:URL,url
+1930,GitTables_1583_schema,1,schema:endTime,end time
+1931,GitTables_1583_schema,4,schema:interactionType,interaction type
+1932,GitTables_1583_schema,0,schema:startTime,start time
+1933,GitTables_1584_schema,0,schema:line,line
+1934,GitTables_1585_schema,3,schema:color,color
+1935,GitTables_1585_schema,2,schema:State,state
+1936,GitTables_1585_schema,8,schema:width,width
+1937,GitTables_1587_schema,0,schema:line,line
+1938,GitTables_1588_schema,0,schema:line,line
+1939,GitTables_1591_schema,22,schema:Time,time
+1940,GitTables_1592_schema,1,schema:endTime,end time
+1941,GitTables_1592_schema,4,schema:interactionType,interaction type
+1942,GitTables_1592_schema,0,schema:startTime,start time
+1943,GitTables_1593_schema,6,schema:depth,depth
+1944,GitTables_1593_schema,5,schema:height,height
+1945,GitTables_1593_schema,0,schema:object,object
+1946,GitTables_1593_schema,4,schema:width,width
+1947,GitTables_1595_schema,0,schema:line,line
+1948,GitTables_1598_schema,8,schema:fileFormat,file format
+1949,GitTables_1599_schema,6,schema:depth,depth
+1950,GitTables_1599_schema,5,schema:height,height
+1951,GitTables_1599_schema,0,schema:object,object
+1952,GitTables_1599_schema,4,schema:width,width
+1953,GitTables_1603_schema,6,schema:author,author
+1954,GitTables_1603_schema,0,schema:identifier,id
+1955,GitTables_1603_schema,3,schema:parent,parent
+1956,GitTables_1603_schema,7,schema:title,title
+1957,GitTables_1603_schema,8,schema:URL,url
+1958,GitTables_1604_schema,3,schema:Code,code
+1959,GitTables_1604_schema,5,schema:location,location
+1960,GitTables_1604_schema,6,schema:value,value
+1961,GitTables_1606_schema,0,schema:line,line
+1962,GitTables_1607_schema,17,schema:Code,code
+1963,GitTables_1607_schema,2,schema:gender,gender
+1964,GitTables_1607_schema,1,schema:identifier,id
+1965,GitTables_1607_schema,23,schema:object,object
+1966,GitTables_1607_schema,6,schema:School,school
+1967,GitTables_1607_schema,29,schema:Series,series
+1968,GitTables_1608_schema,2,schema:Class,class
+1969,GitTables_1610_schema,6,schema:depth,depth
+1970,GitTables_1610_schema,5,schema:height,height
+1971,GitTables_1610_schema,0,schema:object,object
+1972,GitTables_1610_schema,4,schema:width,width
+1973,GitTables_1611_schema,2,schema:Class,class
+1974,GitTables_1612_schema,1,schema:object,object
+1975,GitTables_1613_schema,3,schema:color,color
+1976,GitTables_1613_schema,2,schema:State,state
+1977,GitTables_1613_schema,8,schema:width,width
+1978,GitTables_1616_schema,0,schema:line,line
+1979,GitTables_1617_schema,2,schema:status,status
+1980,GitTables_1617_schema,4,schema:URL,url
+1981,GitTables_1619_schema,6,schema:author,author
+1982,GitTables_1619_schema,0,schema:identifier,id
+1983,GitTables_1619_schema,3,schema:parent,parent
+1984,GitTables_1619_schema,7,schema:title,title
+1985,GitTables_1619_schema,8,schema:URL,url
+1986,GitTables_1623_schema,1,schema:endTime,end time
+1987,GitTables_1623_schema,4,schema:interactionType,interaction type
+1988,GitTables_1623_schema,0,schema:startTime,start time
+1989,GitTables_1626_schema,2,schema:Class,class
+1990,GitTables_1629_schema,2,schema:Class,class
+1991,GitTables_1631_schema,1,schema:endTime,end time
+1992,GitTables_1631_schema,4,schema:interactionType,interaction type
+1993,GitTables_1631_schema,0,schema:startTime,start time
+1994,GitTables_1636_schema,1,schema:Product,product
+1995,GitTables_1636_schema,4,schema:status,status
+1996,GitTables_1637_schema,6,schema:author,author
+1997,GitTables_1637_schema,0,schema:identifier,id
+1998,GitTables_1637_schema,3,schema:parent,parent
+1999,GitTables_1637_schema,7,schema:title,title
+2000,GitTables_1637_schema,8,schema:URL,url
+2001,GitTables_1638_schema,0,schema:line,line
+2002,GitTables_1640_schema,2,schema:Class,class
+2003,GitTables_1644_schema,3,schema:Text,text
+2004,GitTables_1645_schema,0,schema:line,line
+2005,GitTables_1646_schema,0,schema:line,line
+2006,GitTables_1648_schema,6,schema:author,author
+2007,GitTables_1648_schema,0,schema:identifier,id
+2008,GitTables_1648_schema,3,schema:parent,parent
+2009,GitTables_1648_schema,7,schema:title,title
+2010,GitTables_1648_schema,8,schema:URL,url
+2011,GitTables_1649_schema,2,schema:Class,class
+2012,GitTables_1650_schema,6,schema:author,author
+2013,GitTables_1650_schema,0,schema:identifier,id
+2014,GitTables_1650_schema,3,schema:parent,parent
+2015,GitTables_1650_schema,7,schema:title,title
+2016,GitTables_1650_schema,8,schema:URL,url
+2017,GitTables_1653_schema,1,schema:endTime,end time
+2018,GitTables_1653_schema,4,schema:interactionType,interaction type
+2019,GitTables_1653_schema,0,schema:startTime,start time
+2020,GitTables_1656_schema,2,schema:Class,class
+2021,GitTables_1656_schema,5,schema:description,description
+2022,GitTables_1659_schema,0,schema:line,line
+2023,GitTables_1662_schema,2,schema:Class,class
+2024,GitTables_1662_schema,5,schema:description,description
+2025,GitTables_1666_schema,1,schema:Project,project
+2026,GitTables_1667_schema,2,schema:Class,class
+2027,GitTables_1668_schema,1,schema:endTime,end time
+2028,GitTables_1668_schema,4,schema:interactionType,interaction type
+2029,GitTables_1668_schema,0,schema:startTime,start time
+2030,GitTables_1672_schema,2,schema:Class,class
+2031,GitTables_1672_schema,5,schema:description,description
+2032,GitTables_1673_schema,6,schema:author,author
+2033,GitTables_1673_schema,0,schema:identifier,id
+2034,GitTables_1673_schema,3,schema:parent,parent
+2035,GitTables_1673_schema,7,schema:title,title
+2036,GitTables_1673_schema,8,schema:URL,url
+2037,GitTables_1678_schema,6,schema:depth,depth
+2038,GitTables_1678_schema,5,schema:height,height
+2039,GitTables_1678_schema,0,schema:object,object
+2040,GitTables_1678_schema,4,schema:width,width
+2041,GitTables_1679_schema,1,schema:endTime,end time
+2042,GitTables_1679_schema,4,schema:interactionType,interaction type
+2043,GitTables_1679_schema,0,schema:startTime,start time
+2044,GitTables_1680_schema,2,schema:Class,class
+2045,GitTables_1681_schema,6,schema:author,author
+2046,GitTables_1681_schema,0,schema:identifier,id
+2047,GitTables_1681_schema,3,schema:parent,parent
+2048,GitTables_1681_schema,7,schema:title,title
+2049,GitTables_1681_schema,8,schema:URL,url
+2050,GitTables_1683_schema,2,schema:Class,class
+2051,GitTables_1684_schema,1,schema:endTime,end time
+2052,GitTables_1684_schema,4,schema:interactionType,interaction type
+2053,GitTables_1684_schema,0,schema:startTime,start time
+2054,GitTables_1685_schema,6,schema:author,author
+2055,GitTables_1685_schema,0,schema:identifier,id
+2056,GitTables_1685_schema,3,schema:parent,parent
+2057,GitTables_1685_schema,7,schema:title,title
+2058,GitTables_1685_schema,8,schema:URL,url
+2059,GitTables_1686_schema,1,schema:Project,project
+2060,GitTables_1688_schema,2,schema:Class,class
+2061,GitTables_1688_schema,5,schema:description,description
+2062,GitTables_1689_schema,6,schema:author,author
+2063,GitTables_1689_schema,0,schema:identifier,id
+2064,GitTables_1689_schema,3,schema:parent,parent
+2065,GitTables_1689_schema,7,schema:title,title
+2066,GitTables_1689_schema,8,schema:URL,url
+2067,GitTables_1693_schema,6,schema:author,author
+2068,GitTables_1693_schema,0,schema:identifier,id
+2069,GitTables_1693_schema,3,schema:parent,parent
+2070,GitTables_1693_schema,7,schema:title,title
+2071,GitTables_1693_schema,8,schema:URL,url
+2072,GitTables_1694_schema,2,schema:Class,class
+2073,GitTables_1696_schema,0,schema:line,line
+2074,GitTables_1698_schema,2,schema:Class,class
+2075,GitTables_1702_schema,22,schema:Time,time
+2076,GitTables_1705_schema,0,schema:line,line
+2077,GitTables_1706_schema,3,schema:Action,action
+2078,GitTables_1706_schema,2,schema:description,description
+2079,GitTables_1706_schema,0,schema:step,step
+2080,GitTables_1710_schema,1,schema:Project,project
+2081,GitTables_1711_schema,6,schema:author,author
+2082,GitTables_1711_schema,0,schema:identifier,id
+2083,GitTables_1711_schema,3,schema:parent,parent
+2084,GitTables_1711_schema,7,schema:title,title
+2085,GitTables_1711_schema,8,schema:URL,url
+2086,GitTables_1714_schema,0,schema:line,line
+2087,GitTables_1715_schema,6,schema:author,author
+2088,GitTables_1715_schema,0,schema:identifier,id
+2089,GitTables_1715_schema,3,schema:parent,parent
+2090,GitTables_1715_schema,7,schema:title,title
+2091,GitTables_1715_schema,8,schema:URL,url
+2092,GitTables_1719_schema,0,schema:Project,project
+2093,GitTables_1720_schema,4,schema:target,target
+2094,GitTables_1726_schema,2,schema:Class,class
+2095,GitTables_1730_schema,22,schema:Time,time
+2096,GitTables_1732_schema,0,schema:line,line
+2097,GitTables_1733_schema,9,schema:color,color
+2098,GitTables_1733_schema,12,schema:object,object
+2099,GitTables_1733_schema,8,schema:producer,producer
+2100,GitTables_1733_schema,7,schema:Product,product
+2101,GitTables_1733_schema,13,schema:tool,tool
+2102,GitTables_1734_schema,0,schema:line,line
+2103,GitTables_1737_schema,3,schema:color,color
+2104,GitTables_1737_schema,2,schema:State,state
+2105,GitTables_1737_schema,8,schema:width,width
+2106,GitTables_1738_schema,0,schema:Project,project
+2107,GitTables_1740_schema,6,schema:author,author
+2108,GitTables_1740_schema,0,schema:identifier,id
+2109,GitTables_1740_schema,3,schema:parent,parent
+2110,GitTables_1740_schema,7,schema:title,title
+2111,GitTables_1740_schema,8,schema:URL,url
+2112,GitTables_1741_schema,3,schema:color,color
+2113,GitTables_1741_schema,2,schema:State,state
+2114,GitTables_1741_schema,8,schema:width,width
+2115,GitTables_1744_schema,1,schema:Project,project
+2116,GitTables_1745_schema,6,schema:depth,depth
+2117,GitTables_1745_schema,5,schema:height,height
+2118,GitTables_1745_schema,0,schema:object,object
+2119,GitTables_1745_schema,4,schema:width,width
+2120,GitTables_1747_schema,5,schema:category,category
+2121,GitTables_1747_schema,1,schema:email,email
+2122,GitTables_1747_schema,6,schema:manufacturer,manufacturer
+2123,GitTables_1747_schema,10,schema:orderNumber,order number
+2124,GitTables_1747_schema,7,schema:purchaseDate,purchase date
+2125,GitTables_1747_schema,4,schema:serialNumber,serial number
+2126,GitTables_1748_schema,6,schema:author,author
+2127,GitTables_1748_schema,0,schema:identifier,id
+2128,GitTables_1748_schema,3,schema:parent,parent
+2129,GitTables_1748_schema,7,schema:title,title
+2130,GitTables_1748_schema,8,schema:URL,url
+2131,GitTables_1749_schema,0,schema:Project,project
+2132,GitTables_1750_schema,6,schema:author,author
+2133,GitTables_1750_schema,0,schema:identifier,id
+2134,GitTables_1750_schema,3,schema:parent,parent
+2135,GitTables_1750_schema,7,schema:title,title
+2136,GitTables_1750_schema,8,schema:URL,url
+2137,GitTables_1752_schema,22,schema:Time,time
+2138,GitTables_1753_schema,1,schema:endTime,end time
+2139,GitTables_1753_schema,4,schema:interactionType,interaction type
+2140,GitTables_1753_schema,0,schema:startTime,start time
+2141,GitTables_1754_schema,0,schema:line,line
+2142,GitTables_1755_schema,3,schema:City,city
+2143,GitTables_1755_schema,4,schema:Country,country
+2144,GitTables_1755_schema,6,schema:description,description
+2145,GitTables_1755_schema,13,schema:identifier,id
+2146,GitTables_1755_schema,18,schema:members,members
+2147,GitTables_1755_schema,19,schema:name,name
+2148,GitTables_1755_schema,28,schema:Rating,rating
+2149,GitTables_1757_schema,6,schema:author,author
+2150,GitTables_1757_schema,0,schema:identifier,id
+2151,GitTables_1757_schema,3,schema:parent,parent
+2152,GitTables_1757_schema,7,schema:title,title
+2153,GitTables_1757_schema,8,schema:URL,url
+2154,GitTables_1759_schema,6,schema:author,author
+2155,GitTables_1759_schema,0,schema:identifier,id
+2156,GitTables_1759_schema,3,schema:parent,parent
+2157,GitTables_1759_schema,7,schema:title,title
+2158,GitTables_1759_schema,8,schema:URL,url
+2159,GitTables_1761_schema,2,schema:status,status
+2160,GitTables_1761_schema,4,schema:URL,url
+2161,GitTables_1762_schema,0,schema:line,line
+2162,GitTables_1764_schema,0,schema:identifier,id
+2163,GitTables_1764_schema,1,schema:name,name
+2164,GitTables_1765_schema,6,schema:author,author
+2165,GitTables_1765_schema,0,schema:identifier,id
+2166,GitTables_1765_schema,3,schema:parent,parent
+2167,GitTables_1765_schema,7,schema:title,title
+2168,GitTables_1765_schema,8,schema:URL,url
+2169,GitTables_1766_schema,2,schema:abstract,abstract
+2170,GitTables_1766_schema,0,schema:contentType,content type
+2171,GitTables_1766_schema,1,schema:title,title
+2172,GitTables_1766_schema,20,schema:URL,url
+2173,GitTables_1768_schema,8,schema:Duration,duration
+2174,GitTables_1768_schema,12,schema:language,language
+2175,GitTables_1769_schema,2,schema:Class,class
+2176,GitTables_1771_schema,6,schema:author,author
+2177,GitTables_1771_schema,0,schema:identifier,id
+2178,GitTables_1771_schema,3,schema:parent,parent
+2179,GitTables_1771_schema,7,schema:title,title
+2180,GitTables_1771_schema,8,schema:URL,url
+2181,GitTables_1772_schema,0,schema:line,line
+2182,GitTables_1773_schema,0,schema:line,line
+2183,GitTables_1774_schema,2,schema:Class,class
+2184,GitTables_1774_schema,5,schema:description,description
+2185,GitTables_1775_schema,0,schema:name,name
+2186,GitTables_1775_schema,1,schema:object,object
+2187,GitTables_1775_schema,9,schema:roleName,role name
+2188,GitTables_1777_schema,2,schema:Class,class
+2189,GitTables_1777_schema,5,schema:description,description
+2190,GitTables_1780_schema,1,schema:Project,project
+2191,GitTables_1781_schema,2,schema:status,status
+2192,GitTables_1781_schema,4,schema:URL,url
+2193,GitTables_1782_schema,2,schema:Class,class
+2194,GitTables_1782_schema,5,schema:description,description
+2195,GitTables_1783_schema,0,schema:name,name
+2196,GitTables_1783_schema,1,schema:object,object
+2197,GitTables_1783_schema,9,schema:roleName,role name
+2198,GitTables_1784_schema,0,schema:Project,project
+2199,GitTables_1785_schema,2,schema:category,category
+2200,GitTables_1785_schema,3,schema:identifier,id
+2201,GitTables_1785_schema,0,schema:name,name
+2202,GitTables_1786_schema,3,schema:color,color
+2203,GitTables_1786_schema,2,schema:State,state
+2204,GitTables_1786_schema,8,schema:width,width
+2205,GitTables_1787_schema,0,schema:line,line
+2206,GitTables_1788_schema,6,schema:author,author
+2207,GitTables_1788_schema,0,schema:identifier,id
+2208,GitTables_1788_schema,3,schema:parent,parent
+2209,GitTables_1788_schema,7,schema:title,title
+2210,GitTables_1788_schema,8,schema:URL,url
+2211,GitTables_1790_schema,0,schema:line,line
+2212,GitTables_1791_schema,0,schema:line,line
+2213,GitTables_1792_schema,0,schema:line,line
+2214,GitTables_1794_schema,2,schema:Class,class
+2215,GitTables_1799_schema,6,schema:author,author
+2216,GitTables_1799_schema,0,schema:identifier,id
+2217,GitTables_1799_schema,3,schema:parent,parent
+2218,GitTables_1799_schema,7,schema:title,title
+2219,GitTables_1799_schema,8,schema:URL,url
+2220,GitTables_1800_schema,2,schema:Class,class
+2221,GitTables_1800_schema,5,schema:description,description
+2222,GitTables_1802_schema,6,schema:depth,depth
+2223,GitTables_1802_schema,5,schema:height,height
+2224,GitTables_1802_schema,0,schema:object,object
+2225,GitTables_1802_schema,4,schema:width,width
+2226,GitTables_1803_schema,6,schema:author,author
+2227,GitTables_1803_schema,0,schema:identifier,id
+2228,GitTables_1803_schema,3,schema:parent,parent
+2229,GitTables_1803_schema,7,schema:title,title
+2230,GitTables_1803_schema,8,schema:URL,url
+2231,GitTables_1804_schema,6,schema:author,author
+2232,GitTables_1804_schema,0,schema:identifier,id
+2233,GitTables_1804_schema,3,schema:parent,parent
+2234,GitTables_1804_schema,7,schema:title,title
+2235,GitTables_1804_schema,8,schema:URL,url
+2236,GitTables_1805_schema,0,schema:line,line
+2237,GitTables_1806_schema,0,schema:line,line
+2238,GitTables_1808_schema,3,schema:color,color
+2239,GitTables_1808_schema,2,schema:State,state
+2240,GitTables_1808_schema,8,schema:width,width
+2241,GitTables_1809_schema,2,schema:Class,class
+2242,GitTables_1811_schema,0,schema:line,line
+2243,GitTables_1816_schema,6,schema:depth,depth
+2244,GitTables_1816_schema,5,schema:height,height
+2245,GitTables_1816_schema,0,schema:object,object
+2246,GitTables_1816_schema,4,schema:width,width
+2247,GitTables_1817_schema,6,schema:author,author
+2248,GitTables_1817_schema,0,schema:identifier,id
+2249,GitTables_1817_schema,3,schema:parent,parent
+2250,GitTables_1817_schema,7,schema:title,title
+2251,GitTables_1817_schema,8,schema:URL,url
+2252,GitTables_1819_schema,2,schema:Action,action
+2253,GitTables_1819_schema,3,schema:object,object
+2254,GitTables_1825_schema,3,schema:color,color
+2255,GitTables_1825_schema,2,schema:State,state
+2256,GitTables_1825_schema,8,schema:width,width
+2257,GitTables_1827_schema,2,schema:comment,comment
+2258,GitTables_1827_schema,1,schema:Message,message
+2259,GitTables_1828_schema,1,schema:endTime,end time
+2260,GitTables_1828_schema,4,schema:interactionType,interaction type
+2261,GitTables_1828_schema,0,schema:startTime,start time
+2262,GitTables_1830_schema,3,schema:color,color
+2263,GitTables_1830_schema,2,schema:State,state
+2264,GitTables_1830_schema,8,schema:width,width
+2265,GitTables_1832_schema,3,schema:color,color
+2266,GitTables_1832_schema,2,schema:State,state
+2267,GitTables_1832_schema,8,schema:width,width
+2268,GitTables_1835_schema,3,schema:Role,role
+2269,GitTables_1836_schema,6,schema:author,author
+2270,GitTables_1836_schema,0,schema:identifier,id
+2271,GitTables_1836_schema,3,schema:parent,parent
+2272,GitTables_1836_schema,7,schema:title,title
+2273,GitTables_1836_schema,8,schema:URL,url
+2274,GitTables_1837_schema,6,schema:author,author
+2275,GitTables_1837_schema,0,schema:identifier,id
+2276,GitTables_1837_schema,3,schema:parent,parent
+2277,GitTables_1837_schema,7,schema:title,title
+2278,GitTables_1837_schema,8,schema:URL,url
+2279,GitTables_1838_schema,1,schema:endTime,end time
+2280,GitTables_1838_schema,4,schema:interactionType,interaction type
+2281,GitTables_1838_schema,0,schema:startTime,start time
+2282,GitTables_1839_schema,6,schema:author,author
+2283,GitTables_1839_schema,0,schema:identifier,id
+2284,GitTables_1839_schema,3,schema:parent,parent
+2285,GitTables_1839_schema,7,schema:title,title
+2286,GitTables_1839_schema,8,schema:URL,url
+2287,GitTables_1841_schema,6,schema:author,author
+2288,GitTables_1841_schema,0,schema:identifier,id
+2289,GitTables_1841_schema,3,schema:parent,parent
+2290,GitTables_1841_schema,7,schema:title,title
+2291,GitTables_1841_schema,8,schema:URL,url
+2292,GitTables_1843_schema,6,schema:author,author
+2293,GitTables_1843_schema,0,schema:identifier,id
+2294,GitTables_1843_schema,3,schema:parent,parent
+2295,GitTables_1843_schema,7,schema:title,title
+2296,GitTables_1843_schema,8,schema:URL,url
+2297,GitTables_1844_schema,6,schema:author,author
+2298,GitTables_1844_schema,0,schema:identifier,id
+2299,GitTables_1844_schema,3,schema:parent,parent
+2300,GitTables_1844_schema,7,schema:title,title
+2301,GitTables_1844_schema,8,schema:URL,url
+2302,GitTables_1845_schema,1,schema:endTime,end time
+2303,GitTables_1845_schema,4,schema:interactionType,interaction type
+2304,GitTables_1845_schema,0,schema:startTime,start time
+2305,GitTables_1846_schema,2,schema:comment,comment
+2306,GitTables_1846_schema,1,schema:Message,message
+2307,GitTables_1847_schema,2,schema:Class,class
+2308,GitTables_1847_schema,5,schema:description,description
+2309,GitTables_1848_schema,2,schema:Class,class
+2310,GitTables_1848_schema,5,schema:description,description
+2311,GitTables_1850_schema,6,schema:author,author
+2312,GitTables_1850_schema,0,schema:identifier,id
+2313,GitTables_1850_schema,3,schema:parent,parent
+2314,GitTables_1850_schema,7,schema:title,title
+2315,GitTables_1850_schema,8,schema:URL,url
+2316,GitTables_1851_schema,5,schema:size,size
+2317,GitTables_1854_schema,1,schema:description,description
+2318,GitTables_1858_schema,6,schema:author,author
+2319,GitTables_1858_schema,0,schema:identifier,id
+2320,GitTables_1858_schema,3,schema:parent,parent
+2321,GitTables_1858_schema,7,schema:title,title
+2322,GitTables_1858_schema,8,schema:URL,url
+2323,GitTables_1859_schema,2,schema:Class,class
+2324,GitTables_1859_schema,5,schema:description,description
+2325,GitTables_1863_schema,6,schema:author,author
+2326,GitTables_1863_schema,0,schema:identifier,id
+2327,GitTables_1863_schema,3,schema:parent,parent
+2328,GitTables_1863_schema,7,schema:title,title
+2329,GitTables_1863_schema,8,schema:URL,url
+2330,GitTables_1865_schema,2,schema:Class,class
+2331,GitTables_1866_schema,6,schema:author,author
+2332,GitTables_1866_schema,0,schema:identifier,id
+2333,GitTables_1866_schema,3,schema:parent,parent
+2334,GitTables_1866_schema,7,schema:title,title
+2335,GitTables_1866_schema,8,schema:URL,url
+2336,GitTables_1870_schema,0,schema:line,line
+2337,GitTables_1872_schema,2,schema:Class,class
+2338,GitTables_1872_schema,5,schema:description,description
+2339,GitTables_1875_schema,2,schema:Class,class
+2340,GitTables_1878_schema,5,schema:category,category
+2341,GitTables_1878_schema,1,schema:email,email
+2342,GitTables_1878_schema,6,schema:manufacturer,manufacturer
+2343,GitTables_1878_schema,10,schema:orderNumber,order number
+2344,GitTables_1878_schema,7,schema:purchaseDate,purchase date
+2345,GitTables_1878_schema,4,schema:serialNumber,serial number
+2346,GitTables_1879_schema,2,schema:Class,class
+2347,GitTables_1881_schema,6,schema:author,author
+2348,GitTables_1881_schema,0,schema:identifier,id
+2349,GitTables_1881_schema,3,schema:parent,parent
+2350,GitTables_1881_schema,7,schema:title,title
+2351,GitTables_1881_schema,8,schema:URL,url
+2352,GitTables_1884_schema,1,schema:endTime,end time
+2353,GitTables_1884_schema,4,schema:interactionType,interaction type
+2354,GitTables_1884_schema,0,schema:startTime,start time
+2355,GitTables_1885_schema,0,schema:line,line
+2356,GitTables_1886_schema,0,schema:line,line
+2357,GitTables_1887_schema,6,schema:author,author
+2358,GitTables_1887_schema,0,schema:identifier,id
+2359,GitTables_1887_schema,3,schema:parent,parent
+2360,GitTables_1887_schema,7,schema:title,title
+2361,GitTables_1887_schema,8,schema:URL,url
+2362,GitTables_1888_schema,2,schema:Class,class
+2363,GitTables_1888_schema,5,schema:description,description
+2364,GitTables_1892_schema,3,schema:description,description
+2365,GitTables_1894_schema,6,schema:author,author
+2366,GitTables_1894_schema,0,schema:identifier,id
+2367,GitTables_1894_schema,3,schema:parent,parent
+2368,GitTables_1894_schema,7,schema:title,title
+2369,GitTables_1894_schema,8,schema:URL,url
+2370,GitTables_1895_schema,6,schema:depth,depth
+2371,GitTables_1895_schema,5,schema:height,height
+2372,GitTables_1895_schema,0,schema:object,object
+2373,GitTables_1895_schema,4,schema:width,width
+2374,GitTables_1896_schema,0,schema:line,line
+2375,GitTables_1898_schema,6,schema:author,author
+2376,GitTables_1898_schema,0,schema:identifier,id
+2377,GitTables_1898_schema,3,schema:parent,parent
+2378,GitTables_1898_schema,7,schema:title,title
+2379,GitTables_1898_schema,8,schema:URL,url
+2380,GitTables_1903_schema,1,schema:description,description
+2381,GitTables_1904_schema,3,schema:color,color
+2382,GitTables_1904_schema,2,schema:State,state
+2383,GitTables_1904_schema,8,schema:width,width
+2384,GitTables_1908_schema,0,schema:line,line
+2385,GitTables_1913_schema,3,schema:color,color
+2386,GitTables_1913_schema,2,schema:State,state
+2387,GitTables_1913_schema,8,schema:width,width
+2388,GitTables_1915_schema,6,schema:author,author
+2389,GitTables_1915_schema,0,schema:identifier,id
+2390,GitTables_1915_schema,3,schema:parent,parent
+2391,GitTables_1915_schema,7,schema:title,title
+2392,GitTables_1915_schema,8,schema:URL,url
+2393,GitTables_1916_schema,0,schema:name,name
+2394,GitTables_1916_schema,1,schema:version,version
+2395,GitTables_1918_schema,5,schema:description,description
+2396,GitTables_1918_schema,2,schema:name,name
+2397,GitTables_1918_schema,3,schema:version,version
+2398,GitTables_1920_schema,6,schema:depth,depth
+2399,GitTables_1920_schema,5,schema:height,height
+2400,GitTables_1920_schema,0,schema:object,object
+2401,GitTables_1920_schema,4,schema:width,width
+2402,GitTables_1921_schema,3,schema:color,color
+2403,GitTables_1921_schema,2,schema:State,state
+2404,GitTables_1921_schema,8,schema:width,width
+2405,GitTables_1924_schema,22,schema:Time,time
+2406,GitTables_1926_schema,5,schema:Event,event
+2407,GitTables_1926_schema,10,schema:Text,text
+2408,GitTables_1927_schema,2,schema:Class,class
+2409,GitTables_1928_schema,6,schema:author,author
+2410,GitTables_1928_schema,0,schema:identifier,id
+2411,GitTables_1928_schema,3,schema:parent,parent
+2412,GitTables_1928_schema,7,schema:title,title
+2413,GitTables_1928_schema,8,schema:URL,url
+2414,GitTables_1931_schema,3,schema:Role,role
+2415,GitTables_1933_schema,6,schema:author,author
+2416,GitTables_1933_schema,0,schema:identifier,id
+2417,GitTables_1933_schema,3,schema:parent,parent
+2418,GitTables_1933_schema,7,schema:title,title
+2419,GitTables_1933_schema,8,schema:URL,url
+2420,GitTables_1934_schema,1,schema:endTime,end time
+2421,GitTables_1934_schema,4,schema:interactionType,interaction type
+2422,GitTables_1934_schema,0,schema:startTime,start time
+2423,GitTables_1935_schema,0,schema:line,line
+2424,GitTables_1936_schema,6,schema:author,author
+2425,GitTables_1936_schema,0,schema:identifier,id
+2426,GitTables_1936_schema,3,schema:parent,parent
+2427,GitTables_1936_schema,7,schema:title,title
+2428,GitTables_1936_schema,8,schema:URL,url
+2429,GitTables_1937_schema,6,schema:depth,depth
+2430,GitTables_1937_schema,5,schema:height,height
+2431,GitTables_1937_schema,0,schema:object,object
+2432,GitTables_1937_schema,4,schema:width,width
+2433,GitTables_1938_schema,0,schema:line,line
+2434,GitTables_1940_schema,1,schema:object,object
+2435,GitTables_1942_schema,6,schema:author,author
+2436,GitTables_1942_schema,0,schema:identifier,id
+2437,GitTables_1942_schema,3,schema:parent,parent
+2438,GitTables_1942_schema,7,schema:title,title
+2439,GitTables_1942_schema,8,schema:URL,url
+2440,GitTables_1944_schema,6,schema:author,author
+2441,GitTables_1944_schema,0,schema:identifier,id
+2442,GitTables_1944_schema,3,schema:parent,parent
+2443,GitTables_1944_schema,7,schema:title,title
+2444,GitTables_1944_schema,8,schema:URL,url
+2445,GitTables_1945_schema,2,schema:Class,class
+2446,GitTables_1945_schema,5,schema:description,description
+2447,GitTables_1946_schema,6,schema:author,author
+2448,GitTables_1946_schema,0,schema:identifier,id
+2449,GitTables_1946_schema,3,schema:parent,parent
+2450,GitTables_1946_schema,7,schema:title,title
+2451,GitTables_1946_schema,8,schema:URL,url
+2452,GitTables_1947_schema,2,schema:Class,class
+2453,GitTables_1950_schema,2,schema:comment,comment
+2454,GitTables_1950_schema,0,schema:identifier,id
+2455,GitTables_1950_schema,1,schema:status,status
+2456,GitTables_1954_schema,6,schema:author,author
+2457,GitTables_1954_schema,0,schema:identifier,id
+2458,GitTables_1954_schema,3,schema:parent,parent
+2459,GitTables_1954_schema,7,schema:title,title
+2460,GitTables_1954_schema,8,schema:URL,url
+2461,GitTables_1955_schema,1,schema:endTime,end time
+2462,GitTables_1955_schema,4,schema:interactionType,interaction type
+2463,GitTables_1955_schema,0,schema:startTime,start time
+2464,GitTables_1957_schema,0,schema:line,line
+2465,GitTables_1959_schema,2,schema:Class,class
+2466,GitTables_1962_schema,6,schema:author,author
+2467,GitTables_1962_schema,0,schema:identifier,id
+2468,GitTables_1962_schema,3,schema:parent,parent
+2469,GitTables_1962_schema,7,schema:title,title
+2470,GitTables_1962_schema,8,schema:URL,url
+2471,GitTables_1963_schema,1,schema:Project,project
+2472,GitTables_1964_schema,2,schema:Class,class
+2473,GitTables_1965_schema,2,schema:Class,class
+2474,GitTables_1968_schema,2,schema:Class,class
+2475,GitTables_1969_schema,6,schema:author,author
+2476,GitTables_1969_schema,0,schema:identifier,id
+2477,GitTables_1969_schema,3,schema:parent,parent
+2478,GitTables_1969_schema,7,schema:title,title
+2479,GitTables_1969_schema,8,schema:URL,url
+2480,GitTables_1972_schema,1,schema:description,description
+2481,GitTables_1973_schema,2,schema:Class,class
+2482,GitTables_1974_schema,6,schema:author,author
+2483,GitTables_1974_schema,0,schema:identifier,id
+2484,GitTables_1974_schema,3,schema:parent,parent
+2485,GitTables_1974_schema,7,schema:title,title
+2486,GitTables_1974_schema,8,schema:URL,url
+2487,GitTables_1975_schema,0,schema:line,line
+2488,GitTables_1976_schema,2,schema:Class,class
+2489,GitTables_1977_schema,1,schema:endTime,end time
+2490,GitTables_1977_schema,4,schema:interactionType,interaction type
+2491,GitTables_1977_schema,0,schema:startTime,start time
+2492,GitTables_1981_schema,1,schema:Product,product
+2493,GitTables_1981_schema,4,schema:status,status
+2494,GitTables_1982_schema,6,schema:author,author
+2495,GitTables_1982_schema,0,schema:identifier,id
+2496,GitTables_1982_schema,3,schema:parent,parent
+2497,GitTables_1982_schema,7,schema:title,title
+2498,GitTables_1982_schema,8,schema:URL,url
+2499,GitTables_1983_schema,2,schema:Class,class
+2500,GitTables_1984_schema,1,schema:endTime,end time
+2501,GitTables_1984_schema,4,schema:interactionType,interaction type
+2502,GitTables_1984_schema,0,schema:startTime,start time
+2503,GitTables_1985_schema,2,schema:Class,class
+2504,GitTables_1986_schema,1,schema:endTime,end time
+2505,GitTables_1986_schema,4,schema:interactionType,interaction type
+2506,GitTables_1986_schema,0,schema:startTime,start time
+2507,GitTables_1989_schema,6,schema:author,author
+2508,GitTables_1989_schema,0,schema:identifier,id
+2509,GitTables_1989_schema,3,schema:parent,parent
+2510,GitTables_1989_schema,7,schema:title,title
+2511,GitTables_1989_schema,8,schema:URL,url
+2512,GitTables_1990_schema,3,schema:color,color
+2513,GitTables_1990_schema,2,schema:State,state
+2514,GitTables_1990_schema,8,schema:width,width
+2515,GitTables_1992_schema,1,schema:endTime,end time
+2516,GitTables_1992_schema,4,schema:interactionType,interaction type
+2517,GitTables_1992_schema,0,schema:startTime,start time
+2518,GitTables_1994_schema,2,schema:Class,class
+2519,GitTables_1994_schema,5,schema:description,description
+2520,GitTables_1995_schema,6,schema:depth,depth
+2521,GitTables_1995_schema,5,schema:height,height
+2522,GitTables_1995_schema,0,schema:object,object
+2523,GitTables_1995_schema,4,schema:width,width
+2524,GitTables_1997_schema,0,schema:line,line
+2525,GitTables_1999_schema,2,schema:Class,class
+2526,GitTables_2002_schema,0,schema:identifier,id
+2527,GitTables_2002_schema,23,schema:language,language
+2528,GitTables_2002_schema,2,schema:title,title
+2529,GitTables_2003_schema,0,schema:identifier,id
+2530,GitTables_2003_schema,1,schema:name,name
+2531,GitTables_2004_schema,0,schema:identifier,id
+2532,GitTables_2004_schema,2,schema:name,name
+2533,GitTables_2004_schema,8,schema:status,status
+2534,GitTables_2005_schema,7,schema:price,price
