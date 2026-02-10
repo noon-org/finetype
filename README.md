@@ -153,7 +153,7 @@ See [`labels/`](labels/) for the complete taxonomy (YAML definitions with valida
 
 | Model | Accuracy | Test Samples |
 |-------|----------|-------------|
-| Flat CharCNN v2 | **92.50%** | 15,100 |
+| Flat CharCNN v2 | **91.97%** | 15,100 |
 
 ### Real-World Evaluation (GitTables)
 

@@ -1,6 +1,6 @@
 # GitTables Evaluation Report
 
-**FineType v0.1.0 (CharCNN flat model, 92.50% synthetic accuracy)**
+**FineType v0.1.0 (CharCNN flat model, 91.97% synthetic accuracy)**
 **Date:** 2026-02-11
 **Benchmark:** [GitTables Column Type Detection](https://zenodo.org/record/5706316) (1,101 tables)
 
@@ -148,7 +148,7 @@ FineType excels at **format-detectable types** — URLs (96%), timestamps (100%)
 
 Column-mode inference adds measurable value for **geography** (+9.7%) and **datetime** (+4.8%) through disambiguation rules, achieving a net **+0.3%** overall improvement over row-mode. The biggest single improvement is year detection: **15.7% → 27.5%** accuracy on 102 year columns.
 
-The ~48% overall domain accuracy reflects the fundamental difference between format detection (FineType's goal) and semantic type annotation (GitTables' labels). For the subset of types where format implies semantics, FineType achieves **85-100% accuracy on real-world data**, closely matching its 92.50% synthetic accuracy.
+The ~48% overall domain accuracy reflects the fundamental difference between format detection (FineType's goal) and semantic type annotation (GitTables' labels). For the subset of types where format implies semantics, FineType achieves **85-100% accuracy on real-world data**, closely matching its 91.97% synthetic accuracy.
 
 ### Recommendations
 1. ~~Add column-mode inference for ambiguous types (years, postal codes, IDs)~~ ✅ Done (NNFT-026, NNFT-028, NNFT-029)
