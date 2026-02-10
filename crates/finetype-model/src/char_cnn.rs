@@ -7,7 +7,7 @@
 //! - Fully connected layers
 //! - Softmax classifier
 
-use candle_core::{DType, Device, Module, Result, Tensor};
+use candle_core::{Module, Result, Tensor};
 use candle_nn::{conv1d, embedding, linear, Conv1d, Conv1dConfig, Embedding, Linear, VarBuilder};
 
 /// Character vocabulary for the model.
@@ -156,7 +156,7 @@ impl CharCnn {
     
     /// Forward pass.
     pub fn forward(&self, input_ids: &Tensor) -> Result<Tensor> {
-        let (batch_size, _seq_len) = input_ids.dims2()?;
+        let (_batch_size, _seq_len) = input_ids.dims2()?;
         
         // Character embeddings: (batch, seq_len) -> (batch, seq_len, embed_dim)
         let emb = self.char_embedding.forward(input_ids)?;

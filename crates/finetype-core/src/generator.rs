@@ -991,7 +991,7 @@ impl Generator {
                 let exts = [
                     "txt", "pdf", "docx", "xlsx", "csv", "json", "xml", "html",
                     "js", "py", "rs", "go", "java", "cpp", "md", "yaml",
-                    "png", "jpg", "gif", "svg", "mp4", "mp3", "zip", "tar.gz",
+                    "png", "jpg", "gif", "svg", "mp4", "mp3", "zip", "gz",
                 ];
                 Ok(exts[self.rng.gen_range(0..exts.len())].to_string())
             }

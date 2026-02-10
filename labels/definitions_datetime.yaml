@@ -173,25 +173,25 @@ datetime.timestamp.rfc_3339:
   designation: universal
   locales: [UNIVERSAL]
   broad_type: TIMESTAMPTZ
-  format_string: "%Y-%m-%dT%H:%M:%S%z"
-  transform: "strptime({col}, '%Y-%m-%dT%H:%M:%S %z')"
+  format_string: "%Y-%m-%dT%H:%M:%S%:z"
+  transform: "strptime({col}, '%Y-%m-%dT%H:%M:%S%:z')"
   transform_ext: null
   decompose: null
   validation:
     type: string
-    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2} .+$"
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[+-]\\d{2}:\\d{2}$"
   tier: [TIMESTAMPTZ, timestamp]
   release_priority: 5
   aliases: []
   samples:
-    - "2024-01-15T10:30:00 GMT+00:00"
-    - "2019-12-31T23:59:59 GMT+00:00"
+    - "2024-01-15T10:30:00+00:00"
+    - "2019-12-31T23:59:59-05:00"
+    - "2023-06-01T12:00:00+09:00"
   references:
     - title: "RFC 3339 - Date and Time on the Internet"
       link: "https://www.rfc-editor.org/rfc/rfc3339"
   notes: >
-    Current generator produces space-separated offset (non-standard).
-    Should be updated to produce proper RFC 3339: 2024-01-15T10:30:00+00:00
+    RFC 3339 format: date T time offset with no space before offset.
 
 datetime.timestamp.sql_standard:
   title: SQL Standard
@@ -338,13 +338,14 @@ datetime.timestamp.rfc_2822_ordinal:
   decompose: null
   validation:
     type: string
-    pattern: "^[A-Z][a-z]{2}, \\d{2}`(st|nd|rd|th)` [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2} [+-]\\d{4}$"
+    pattern: "^\\d{1,2}(?:st|nd|rd|th) [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2} [+-]\\d{4}$"
   tier: [TIMESTAMPTZ, timestamp]
   release_priority: 3
   aliases: [rfc_2822_with_ordinals]
   samples:
-    - "Tue, 15`th` Jan 2024 10:30:00 +0000"
-    - "Wed, 01`st` Jan 2020 00:00:00 +0000"
+    - "15th Jan 2024 10:30:00 +0000"
+    - "1st Jan 2020 00:00:00 +0000"
+    - "22nd Jul 2028 21:48:59 +0000"
   references:
     - title: "RFC 2822 - Internet Message Format"
       link: "https://www.rfc-editor.org/rfc/rfc2822"
@@ -1102,7 +1103,7 @@ datetime.offset.iana:
   decompose: null
   validation:
     type: string
-    pattern: "^[A-Z][a-z]+/[A-Z][a-z_]+(/[A-Z][a-z_]+)?$"
+    pattern: "^[A-Z][a-zA-Z]+/[A-Za-z_]+(/[A-Za-z_]+)?$"
     enum:
       - "America/New_York"
       - "Europe/London"

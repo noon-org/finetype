@@ -343,7 +343,7 @@ representation.text.emoji:
   decompose: null
   validation:
     type: string
-    pattern: "^[\\p{So}\\p{Sk}]+$"
+    pattern: "^[\\p{So}\\p{Sk}\\p{Mn}\\p{Cf}]+$"
   tier: [VARCHAR, text]
   release_priority: 3
   aliases: null

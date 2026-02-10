@@ -421,7 +421,7 @@ identity.person.height:
     unit: "UPPER(COALESCE(REGEXP_EXTRACT({col}, '([A-Z]+)$'), CASE WHEN LENGTH({col}) > 10 THEN 'CM' ELSE 'INCH' END))"
   validation:
     type: string
-    pattern: "^[0-9]+(\\.[0-9]+)?\\s*(cm|in|ft|inches|feet)?$"
+    pattern: "^[0-9]+(\\.[0-9]+)?\\s*(cm|in|ft|inches|feet)?$|^[0-9]+'[0-9]+\"$"
   tier: [DOUBLE, person]
   release_priority: 2
   aliases: null
