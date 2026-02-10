@@ -360,7 +360,24 @@ impl Generator {
                 let tlds = ["com", "org", "net", "io", "dev"];
                 Ok(format!("{}.{}", self.random_word(), tlds[self.rng.gen_range(0..tlds.len())]))
             }
-            ("internet", "port") => Ok(self.rng.gen_range(1..65535).to_string()),
+            ("internet", "port") => {
+                // Weighted toward common/well-known ports to distinguish from generic integers
+                if self.rng.gen_bool(0.6) {
+                    // Well-known ports
+                    let common = [
+                        22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995,
+                        3306, 3389, 5432, 5672, 5900, 6379, 8080, 8443, 8888,
+                        9090, 9200, 9300, 27017,
+                    ];
+                    Ok(common[self.rng.gen_range(0..common.len())].to_string())
+                } else if self.rng.gen_bool(0.5) {
+                    // Registered ports (1024-49151)
+                    Ok(self.rng.gen_range(1024..49152).to_string())
+                } else {
+                    // Ephemeral ports (49152-65535)
+                    Ok(self.rng.gen_range(49152..65535).to_string())
+                }
+            }
             ("internet", "top_level_domain") => {
                 let tlds = ["com", "org", "net", "io", "dev", "edu", "gov", "mil", "co.uk", "com.au"];
                 Ok(tlds[self.rng.gen_range(0..tlds.len())].to_string())
@@ -412,14 +429,20 @@ impl Generator {
                 Ok(self.gen_hex_string(len))
             }
             ("cryptographic", "token_urlsafe") => {
-                use rand::distributions::Alphanumeric;
+                // Base64url alphabet: A-Z, a-z, 0-9, -, _
+                // Must include - and _ to distinguish from base58 (bitcoin_address)
+                let base64url = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
                 let len = self.rng.gen_range(22..44);
-                let token: String = (&mut self.rng)
-                    .sample_iter(Alphanumeric)
-                    .take(len)
-                    .map(|b| b as char)
+                let mut token: String = (0..len)
+                    .map(|_| base64url.as_bytes()[self.rng.gen_range(0..64)] as char)
                     .collect();
-                Ok(token.replace('+', "-").replace('/', "_"))
+                // Ensure at least one - or _ to distinguish from alphanumeric-only strings
+                if !token.contains('-') && !token.contains('_') {
+                    let pos = self.rng.gen_range(0..token.len());
+                    let special = if self.rng.gen_bool(0.5) { '-' } else { '_' };
+                    token.replace_range(pos..pos + 1, &special.to_string());
+                }
+                Ok(token)
             }
 
             // ── code (6 types) ───────────────────────────────────────────
@@ -665,7 +688,8 @@ impl Generator {
                 Ok(codes[self.rng.gen_range(0..codes.len())].to_string())
             }
             ("person", "gender_symbol") => {
-                let symbols = ["♂", "♀", "⚧"];
+                // Unicode gender symbols only — NOT emoji codepoints
+                let symbols = ["♂", "♀", "⚧", "⚪"];
                 Ok(symbols[self.rng.gen_range(0..symbols.len())].to_string())
             }
             ("person", "nationality") => {
@@ -788,10 +812,38 @@ impl Generator {
                 Ok(format!("0x{}", self.gen_hex_string(40)))
             }
             ("payment", "paypal_email") => {
+                // PayPal-distinctive patterns: paypal.com domains, business patterns, pp- prefixes
                 let first = self.random_first_name().to_lowercase();
                 let last = self.random_last_name().to_lowercase();
-                let domains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com"];
-                Ok(format!("{}.{}@{}", first, last, domains[self.rng.gen_range(0..domains.len())]))
+                match self.rng.gen_range(0u8..5) {
+                    0 => {
+                        // PayPal business email
+                        Ok(format!("{}@paypal.com", first))
+                    }
+                    1 => {
+                        // PayPal-style pp- prefix
+                        Ok(format!("pp-{}.{}@paypal.com", first, last))
+                    }
+                    2 => {
+                        // PayPal merchant pattern
+                        let word = self.random_word();
+                        Ok(format!("{}-payments@paypal.com", word))
+                    }
+                    3 => {
+                        // PayPal service address
+                        let services = ["service", "payments", "billing", "merchant", "seller"];
+                        let svc = services[self.rng.gen_range(0..services.len())];
+                        Ok(format!("{}.{}@{}.paypal.com", first, last, svc))
+                    }
+                    _ => {
+                        // PayPal-linked email with paypal subdomain
+                        Ok(format!("paypal-{}{}@{}.com",
+                            first,
+                            self.rng.gen_range(1..999),
+                            self.random_word()
+                        ))
+                    }
+                }
             }
 
             // ── academic (2 types) ───────────────────────────────────────
@@ -908,20 +960,64 @@ impl Generator {
                 Ok(suffixes[self.rng.gen_range(0..suffixes.len())].to_string())
             }
             ("address", "postal_code") => {
-                let formats = [
-                    format!("{:05}", self.rng.gen_range(10000..99999)),  // US ZIP
-                    format!("{:05}", self.rng.gen_range(10000..99999)),  // US ZIP
-                    format!("{}{}{} {}{}{}",
-                        (b'A' + self.rng.gen_range(0..26)) as char,
-                        self.rng.gen_range(0..9),
-                        (b'A' + self.rng.gen_range(0..26)) as char,
-                        self.rng.gen_range(0..9),
-                        (b'A' + self.rng.gen_range(0..26)) as char,
-                        self.rng.gen_range(0..9),
-                    ),  // UK postcode
-                    format!("{:05}", self.rng.gen_range(10000..99999)),  // DE/FR
-                ];
-                Ok(formats[self.rng.gen_range(0..formats.len())].clone())
+                match self.rng.gen_range(0u8..8) {
+                    0 => {
+                        // US ZIP: 5 digits
+                        Ok(format!("{:05}", self.rng.gen_range(10000..99999)))
+                    }
+                    1 => {
+                        // US ZIP+4: 5 digits-4 digits
+                        Ok(format!("{:05}-{:04}",
+                            self.rng.gen_range(10000..99999),
+                            self.rng.gen_range(1000..9999)
+                        ))
+                    }
+                    2 => {
+                        // UK: A9 9AA or A9A 9AA format
+                        Ok(format!("{}{}{} {}{}{}",
+                            (b'A' + self.rng.gen_range(0..26)) as char,
+                            self.rng.gen_range(1..9),
+                            (b'A' + self.rng.gen_range(0..26)) as char,
+                            self.rng.gen_range(1..9),
+                            (b'A' + self.rng.gen_range(0..26)) as char,
+                            (b'A' + self.rng.gen_range(0..26)) as char,
+                        ))
+                    }
+                    3 => {
+                        // Canada: A1A 1A1
+                        Ok(format!("{}{}{}  {}{}{}",
+                            (b'A' + self.rng.gen_range(0..26)) as char,
+                            self.rng.gen_range(1..9),
+                            (b'A' + self.rng.gen_range(0..26)) as char,
+                            self.rng.gen_range(1..9),
+                            (b'A' + self.rng.gen_range(0..26)) as char,
+                            self.rng.gen_range(1..9),
+                        ))
+                    }
+                    4 => {
+                        // Japan: 123-4567
+                        Ok(format!("{:03}-{:04}",
+                            self.rng.gen_range(100..999),
+                            self.rng.gen_range(1000..9999)
+                        ))
+                    }
+                    5 => {
+                        // Germany/France: 5 digits
+                        Ok(format!("{:05}", self.rng.gen_range(10000..99999)))
+                    }
+                    6 => {
+                        // Australia: 4 digits
+                        Ok(format!("{:04}", self.rng.gen_range(2000..9999)))
+                    }
+                    _ => {
+                        // Netherlands: 4 digits + 2 letters
+                        Ok(format!("{:04} {}{}",
+                            self.rng.gen_range(1000..9999),
+                            (b'A' + self.rng.gen_range(0..26)) as char,
+                            (b'A' + self.rng.gen_range(0..26)) as char,
+                        ))
+                    }
+                }
             }
 
             // ── coordinate (3 types) ─────────────────────────────────────
