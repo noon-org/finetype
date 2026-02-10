@@ -9,6 +9,7 @@
 
 pub mod checker;
 pub mod generator;
+pub mod locale_data;
 pub mod taxonomy;
 pub mod tokenizer;
 pub mod validator;

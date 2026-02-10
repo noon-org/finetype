@@ -83,6 +83,10 @@ enum Commands {
         /// Random seed for reproducibility
         #[arg(long, default_value = "42")]
         seed: u64,
+
+        /// Generate 4-level labels with locale suffixes (domain.category.type.LOCALE)
+        #[arg(long)]
+        localized: bool,
     },
 
     /// Train a model
@@ -307,7 +311,8 @@ fn main() -> Result<()> {
             output,
             taxonomy,
             seed,
-        } => cmd_generate(samples, priority, output, taxonomy, seed),
+            localized,
+        } => cmd_generate(samples, priority, output, taxonomy, seed, localized),
 
         Commands::Train {
             data,
@@ -564,6 +569,7 @@ fn cmd_generate(
     output: PathBuf,
     taxonomy_path: PathBuf,
     seed: u64,
+    localized: bool,
 ) -> Result<()> {
     eprintln!("Loading taxonomy from {:?}", taxonomy_path);
 
@@ -575,13 +581,22 @@ fn cmd_generate(
         taxonomy.domains().len()
     );
 
+    let mode = if localized {
+        "localized (4-level)"
+    } else {
+        "flat (3-level)"
+    };
     eprintln!(
-        "Generating {} samples per label (priority >= {})",
-        samples, priority
+        "Generating {} samples per label (priority >= {}, mode: {})",
+        samples, priority, mode
     );
 
     let mut generator = Generator::with_seed(taxonomy, seed);
-    let all_samples = generator.generate_all(priority, samples);
+    let all_samples = if localized {
+        generator.generate_all_localized(priority, samples)
+    } else {
+        generator.generate_all(priority, samples)
+    };
 
     eprintln!("Generated {} total samples", all_samples.len());
 
