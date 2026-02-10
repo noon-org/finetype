@@ -1,9 +1,11 @@
 ---
 id: NNFT-015
 title: Set up finetype-duckdb extension crate scaffold
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@nightingale'
 created_date: '2026-02-10 05:31'
+updated_date: '2026-02-10 15:12'
 labels:
   - duckdb
   - extension

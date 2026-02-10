@@ -1,0 +1,18 @@
+[package]
+name = "finetype_duckdb"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "DuckDB extension for semantic type classification"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+embed-models = []
+
+[dependencies]
+duckdb = { workspace = true }
+libduckdb-sys = { workspace = true }
+finetype-core = { workspace = true }
+finetype-model = { workspace = true }

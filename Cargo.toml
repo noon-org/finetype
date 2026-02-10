@@ -4,6 +4,7 @@ members = [
     "crates/finetype-core",
     "crates/finetype-model",
     "crates/finetype-cli",
+    "crates/finetype-duckdb",
 ]
 
 [workspace.package]
@@ -51,6 +52,10 @@ thiserror = "2.0"
 anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# DuckDB extension
+duckdb = { version = "=1.4.4", features = ["loadable-extension", "vscalar"] }
+libduckdb-sys = "=1.4.4"
 
 # Internal crates
 finetype-core = { path = "crates/finetype-core" }
