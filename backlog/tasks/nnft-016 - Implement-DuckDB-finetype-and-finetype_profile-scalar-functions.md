@@ -1,7 +1,7 @@
 ---
 id: NNFT-016
 title: Implement DuckDB finetype() and finetype_profile() scalar functions
-status: In Progress
+status: Done
 assignee:
   - '@nightingale'
 created_date: '2026-02-10 05:32'

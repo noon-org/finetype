@@ -4,6 +4,8 @@
 //! - `finetype_version()` — Returns the extension version
 //! - `finetype(value)` — Classify a single value, returns the semantic type label
 //! - `finetype_detail(value)` — Classify with detail: returns JSON with type, confidence, DuckDB type
+//! - `finetype_cast(value)` — Normalize a value for safe TRY_CAST (dates → ISO, booleans → true/false, etc.)
+//! - `finetype_unpack(json)` — Recursively classify JSON fields, returns annotated JSON
 
 use duckdb::core::{DataChunkHandle, Inserter, LogicalTypeHandle, LogicalTypeId};
 use duckdb::vscalar::{ScalarFunctionSignature, VScalar};
@@ -13,6 +15,11 @@ use std::error::Error;
 use std::ffi::CString;
 
 mod type_mapping;
+
+#[cfg(feature = "embed-models")]
+mod normalize;
+#[cfg(feature = "embed-models")]
+mod unpack;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EMBEDDED MODELS
@@ -247,6 +254,126 @@ impl VScalar for FineTypeDetail {
     }
 }
 
+/// `finetype_cast(value VARCHAR) → VARCHAR` — Normalize a value for safe casting.
+///
+/// Classifies the value, then normalizes it to a canonical form suitable for
+/// DuckDB `TRY_CAST()`. Returns NULL if the value doesn't validate for its
+/// detected type.
+///
+/// Examples:
+/// - `finetype_cast('01/15/2024')` → `'2024-01-15'` (US date → ISO)
+/// - `finetype_cast('Yes')` → `'true'` (boolean normalization)
+/// - `finetype_cast('550E8400-...')` → `'550e8400-...'` (UUID lowercase)
+/// - `finetype_cast('1,234')` → `'1234'` (strip formatting)
+#[cfg(feature = "embed-models")]
+struct FineTypeCast;
+
+#[cfg(feature = "embed-models")]
+impl VScalar for FineTypeCast {
+    type State = ();
+
+    unsafe fn invoke(
+        _state: &Self::State,
+        input: &mut DataChunkHandle,
+        output: &mut dyn WritableVector,
+    ) -> Result<(), Box<dyn Error>> {
+        let classifier = get_classifier();
+        let len = input.len();
+        let mut output_vec = output.flat_vector();
+
+        for i in 0..len {
+            if let Some(text) = read_varchar(input, 0, i) {
+                if text.is_empty() {
+                    output_vec.set_null(i);
+                    continue;
+                }
+                match classifier.classify(&text) {
+                    Ok(result) => {
+                        if let Some(normalized) = normalize::normalize(&text, &result.label) {
+                            let cstr = CString::new(normalized)?;
+                            output_vec.insert(i, cstr);
+                        } else {
+                            // Validation failed → NULL
+                            output_vec.set_null(i);
+                        }
+                    }
+                    Err(_) => {
+                        // Classification error → pass through
+                        let cstr = CString::new(text)?;
+                        output_vec.insert(i, cstr);
+                    }
+                }
+            }
+            // NULL input → DuckDB handles NULL propagation
+        }
+
+        Ok(())
+    }
+
+    fn signatures() -> Vec<ScalarFunctionSignature> {
+        vec![ScalarFunctionSignature::exact(
+            vec![LogicalTypeHandle::from(LogicalTypeId::Varchar)],
+            LogicalTypeHandle::from(LogicalTypeId::Varchar),
+        )]
+    }
+}
+
+/// `finetype_unpack(json_value VARCHAR) → VARCHAR` — Recursively infer types in JSON.
+///
+/// Parses a JSON string and classifies each scalar value. Returns annotated JSON
+/// where each value is replaced with an object containing:
+/// - `value`: the original value
+/// - `type`: detected finetype label
+/// - `confidence`: classification confidence (0.0 to 1.0)
+/// - `duckdb_type`: recommended DuckDB type
+///
+/// Returns NULL for non-JSON input.
+#[cfg(feature = "embed-models")]
+struct FineTypeUnpack;
+
+#[cfg(feature = "embed-models")]
+impl VScalar for FineTypeUnpack {
+    type State = ();
+
+    unsafe fn invoke(
+        _state: &Self::State,
+        input: &mut DataChunkHandle,
+        output: &mut dyn WritableVector,
+    ) -> Result<(), Box<dyn Error>> {
+        let classifier = get_classifier();
+        let len = input.len();
+        let mut output_vec = output.flat_vector();
+
+        for i in 0..len {
+            if let Some(text) = read_varchar(input, 0, i) {
+                if text.is_empty() {
+                    output_vec.set_null(i);
+                    continue;
+                }
+                match unpack::unpack_json(&text, classifier) {
+                    Some(annotated) => {
+                        let cstr = CString::new(annotated)?;
+                        output_vec.insert(i, cstr);
+                    }
+                    None => {
+                        // Not valid JSON → NULL
+                        output_vec.set_null(i);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn signatures() -> Vec<ScalarFunctionSignature> {
+        vec![ScalarFunctionSignature::exact(
+            vec![LogicalTypeHandle::from(LogicalTypeId::Varchar)],
+            LogicalTypeHandle::from(LogicalTypeId::Varchar),
+        )]
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXTENSION ENTRYPOINT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -267,6 +394,12 @@ pub unsafe fn extension_entrypoint(con: duckdb::Connection) -> Result<(), Box<dy
 
         con.register_scalar_function::<FineTypeDetail>("finetype_detail")
             .expect("Failed to register finetype_detail");
+
+        con.register_scalar_function::<FineTypeCast>("finetype_cast")
+            .expect("Failed to register finetype_cast");
+
+        con.register_scalar_function::<FineTypeUnpack>("finetype_unpack")
+            .expect("Failed to register finetype_unpack");
     }
 
     Ok(())
