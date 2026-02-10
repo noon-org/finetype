@@ -52,6 +52,14 @@ enum Commands {
         /// Model type (transformer, char_cnn)
         #[arg(long, default_value = "char-cnn")]
         model_type: ModelType,
+
+        /// Inference mode: row (per-value) or column (distribution-based disambiguation)
+        #[arg(long, default_value = "row")]
+        mode: InferenceMode,
+
+        /// Sample size for column mode (default 100)
+        #[arg(long, default_value = "100")]
+        sample_size: usize,
     },
 
     /// Generate synthetic training data
@@ -200,6 +208,14 @@ enum ModelType {
     Tiered,
 }
 
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum InferenceMode {
+    /// Classify each value independently (default)
+    Row,
+    /// Treat all inputs as one column, use distribution to disambiguate
+    Column,
+}
+
 fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt()
@@ -217,7 +233,19 @@ fn main() -> Result<()> {
             confidence,
             value,
             model_type,
-        } => cmd_infer(input, file, model, output, confidence, value, model_type),
+            mode,
+            sample_size,
+        } => cmd_infer(
+            input,
+            file,
+            model,
+            output,
+            confidence,
+            value,
+            model_type,
+            mode,
+            sample_size,
+        ),
 
         Commands::Generate {
             samples,
@@ -267,6 +295,7 @@ fn main() -> Result<()> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn cmd_infer(
     input: Option<String>,
     file: Option<PathBuf>,
@@ -275,8 +304,10 @@ fn cmd_infer(
     show_confidence: bool,
     show_value: bool,
     model_type: ModelType,
+    mode: InferenceMode,
+    sample_size: usize,
 ) -> Result<()> {
-    use finetype_model::{CharClassifier, ClassificationResult};
+    use finetype_model::{CharClassifier, ClassificationResult, ColumnClassifier, ColumnConfig};
 
     // Collect inputs
     let inputs: Vec<String> = if let Some(text) = input {
@@ -347,6 +378,83 @@ fn cmd_infer(
         }
     }
 
+    // Column mode: treat all inputs as one column, return single prediction
+    if matches!(mode, InferenceMode::Column) {
+        match model_type {
+            ModelType::CharCnn => {
+                let classifier = CharClassifier::load(&model)?;
+                let config = ColumnConfig {
+                    sample_size,
+                    ..Default::default()
+                };
+                let column_classifier = ColumnClassifier::new(classifier, config);
+                let result = column_classifier.classify_column(&inputs)?;
+
+                match output {
+                    OutputFormat::Plain => {
+                        println!("{}", result.label);
+                        if show_confidence {
+                            println!(
+                                "  confidence: {:.4} ({} samples)",
+                                result.confidence, result.samples_used
+                            );
+                        }
+                        if result.disambiguation_applied {
+                            println!(
+                                "  disambiguation: {}",
+                                result.disambiguation_rule.as_deref().unwrap_or("unknown")
+                            );
+                        }
+                        if show_value {
+                            println!("  vote distribution:");
+                            for (label, frac) in &result.vote_distribution {
+                                if *frac >= 0.01 {
+                                    println!("    {:.1}%  {}", frac * 100.0, label);
+                                }
+                            }
+                        }
+                    }
+                    OutputFormat::Json => {
+                        let mut obj = serde_json::Map::new();
+                        obj.insert("class".to_string(), json!(result.label));
+                        obj.insert("confidence".to_string(), json!(result.confidence));
+                        obj.insert("samples_used".to_string(), json!(result.samples_used));
+                        obj.insert(
+                            "disambiguation_applied".to_string(),
+                            json!(result.disambiguation_applied),
+                        );
+                        if let Some(rule) = &result.disambiguation_rule {
+                            obj.insert("disambiguation_rule".to_string(), json!(rule));
+                        }
+                        let votes: Vec<serde_json::Value> = result
+                            .vote_distribution
+                            .iter()
+                            .filter(|(_, f)| *f >= 0.01)
+                            .map(|(l, f)| json!({"label": l, "fraction": f}))
+                            .collect();
+                        obj.insert("vote_distribution".to_string(), json!(votes));
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::Value::Object(obj))?
+                        );
+                    }
+                    OutputFormat::Csv => {
+                        println!(
+                            "{},{:.4},{}",
+                            result.label, result.confidence, result.samples_used
+                        );
+                    }
+                }
+            }
+            _ => {
+                eprintln!("Column mode is currently only supported with --model-type char-cnn");
+                std::process::exit(1);
+            }
+        }
+        return Ok(());
+    }
+
+    // Row mode: classify each value independently
     match model_type {
         ModelType::Transformer => {
             let classifier = Classifier::load(&model)?;

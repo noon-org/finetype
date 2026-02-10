@@ -1,9 +1,11 @@
 ---
 id: NNFT-012
 title: Implement column-mode inference with distribution-based disambiguation
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@nightingale'
 created_date: '2026-02-10 05:31'
+updated_date: '2026-02-10 15:04'
 labels:
   - model
   - inference
@@ -39,3 +41,9 @@ Column-mode is what the DuckDB extension will use for `finetype_profile(col)`. I
 - [ ] #6 Column-mode accuracy tested on synthetic column datasets
 - [ ] #7 CLI supports column-mode via finetype infer -f with --mode column flag
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+## Implementation Plan\n\n### Phase 1: Column classifier module (column.rs)\n1. Create `ColumnConfig` with sample_size (default 100) and min_agreement threshold\n2. Create `ColumnResult` with: label, confidence, vote_distribution, disambiguation_applied flag\n3. Create `ColumnClassifier` that wraps CharClassifier for batch inference\n4. Core algorithm: sample → classify each → aggregate votes → apply disambiguation → return\n\n### Phase 2: Disambiguation rules\n5. Date format: us_slash vs eu_slash — parse first component, if any > 12 → DD/MM\n6. Short dates: short_dmy vs short_mdy — same first-component > 12 rule\n7. Coordinates: latitude vs longitude — if any |value| > 90 → longitude\n8. Numeric: range/distribution analysis for port vs increment vs postal_code\n\n### Phase 3: Tests\n9. Unit tests with synthetic columns for each disambiguation case\n10. Integration test with generated columns\n\n### Phase 4: CLI integration\n11. Add `--mode column` flag to `infer` command\n12. In column mode, treat all input as one column and return single prediction
+<!-- SECTION:PLAN:END -->
