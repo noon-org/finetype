@@ -306,16 +306,25 @@ finetype/
 - [x] Implement `Generator` with synthetic data for all 151 types
 - [x] Verify 1:1 alignment between generator match arms and YAML definition keys
 - [x] Add workspace dependencies: `fake`, `base64`, `sha2`, `md-5`, `glob`
+- [x] Generate training data: 74,500 samples (500/label × 149 labels, priority ≥ 1)
+- [x] Generate test data: 14,900 samples (100/label × 149 labels, different seed)
 - [ ] Add [`phonenumber`](https://crates.io/crates/phonenumber) for per-country phone generation
 - [ ] Add [`luhn`](https://github.com/pacak/luhn) for credit card / IMEI checksum validation
-- [ ] Generate training data with full `domain.category.type.locale` labels
+- [ ] Generate training data with full `domain.category.type.locale` labels (Phase 3 expansion)
 
-### Phase 3: Build & Train -- NEXT
+### Phase 3: Build & Train -- IN PROGRESS
 
-- [ ] Install Rust toolchain and verify `cargo build` succeeds
-- [ ] Run `cargo test --all` to validate taxonomy parser and generator
-- [ ] Generate training dataset: `finetype generate --samples 500 --output data/train.ndjson`
-- [ ] Train CharCNN model on 151-label taxonomy
+- [x] Install Rust toolchain (Linuxbrew 1.93.0)
+- [x] Verify `cargo build --release` succeeds (clean, all features)
+- [x] Run `cargo test --all` (27/27 tests pass, 151/151 checker validation passes)
+- [x] Generate training dataset: `finetype generate --samples 500 --output data/train.ndjson`
+- [x] Generate test dataset with different seed
+- [x] Build and test CharCNN training pipeline
+  - [x] Add `labels.json` save during training
+  - [x] Add `labels.json` load during inference for seamless training→inference
+  - [x] 2-epoch quick test: 57% → 84% accuracy (proof of concept)
+- [ ] Train CharCNN model on full 149-label dataset (10 epochs, in progress)
+- [ ] Evaluate on test set: compute accuracy, per-class metrics, confusion matrix
 - [ ] Benchmark: single-value accuracy, inference latency
 - [ ] Train tiered models (Tier 0 broad type, Tier 1 per-category)
 - [ ] Implement column-mode inference with distribution-based disambiguation

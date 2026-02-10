@@ -182,7 +182,7 @@ impl CharTrainer {
         eprintln!("Saving model to {:?}", output_dir);
         std::fs::create_dir_all(output_dir)?;
         varmap.save(output_dir.join("model.safetensors"))?;
-        
+
         // Save config for inference
         let config_str = format!(
             "vocab_size: {}\nmax_seq_length: {}\nembed_dim: {}\nnum_filters: {}\nhidden_dim: {}\nn_classes: {}\nmodel_type: char_cnn\n",
@@ -194,7 +194,13 @@ impl CharTrainer {
             n_classes
         );
         std::fs::write(output_dir.join("config.yaml"), config_str)?;
-        
+
+        // Save label mapping for inference (sorted, matching label_to_index order)
+        let labels: Vec<&str> = taxonomy.labels().iter().map(|s| s.as_str()).collect();
+        let labels_json = serde_json::to_string_pretty(&labels)
+            .unwrap_or_else(|_| "[]".to_string());
+        std::fs::write(output_dir.join("labels.json"), labels_json)?;
+
         eprintln!("Model saved to {:?}", output_dir);
         
         Ok(())

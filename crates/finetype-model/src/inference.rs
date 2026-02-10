@@ -211,17 +211,27 @@ impl CharClassifier {
     pub fn load<P: AsRef<Path>>(model_dir: P) -> Result<Self, InferenceError> {
         let model_dir = model_dir.as_ref();
         let device = Self::get_device();
-        
-        // Load taxonomy
+
+        // Load label mapping — try labels.json first (saved by trainer), then taxonomy.yaml
+        let labels_json_path = model_dir.join("labels.json");
         let taxonomy_path = model_dir.join("taxonomy.yaml");
-        let taxonomy = if taxonomy_path.exists() {
-            Taxonomy::from_file(&taxonomy_path)?
+        let (n_classes, index_to_label) = if labels_json_path.exists() {
+            let content = std::fs::read_to_string(&labels_json_path)?;
+            let labels: Vec<String> = serde_json::from_str(&content)
+                .map_err(|e| InferenceError::InvalidPath(format!("Failed to parse labels.json: {}", e)))?;
+            let n = labels.len();
+            let mapping: HashMap<usize, String> = labels.into_iter().enumerate().collect();
+            (n, mapping)
+        } else if taxonomy_path.exists() {
+            let taxonomy = Taxonomy::from_file(&taxonomy_path)?;
+            let n = taxonomy.len();
+            (n, taxonomy.index_to_label())
         } else {
-            Taxonomy::from_file(model_dir.join("labels.yaml"))?
+            let labels_yaml_path = model_dir.join("labels.yaml");
+            let taxonomy = Taxonomy::from_file(&labels_yaml_path)?;
+            let n = taxonomy.len();
+            (n, taxonomy.index_to_label())
         };
-        
-        let n_classes = taxonomy.len();
-        let index_to_label = taxonomy.index_to_label();
         
         // Load config from config.yaml if available
         let config_path = model_dir.join("config.yaml");
