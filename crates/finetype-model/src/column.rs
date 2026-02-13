@@ -999,9 +999,7 @@ mod tests {
             })
             .collect();
 
-        let votes = vec![
-            ("representation.numeric.decimal_number".to_string(), 10),
-        ];
+        let votes = vec![("representation.numeric.decimal_number".to_string(), 10)];
         let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
 
         let result = disambiguate_numeric(&values, &results, &top_labels);
@@ -1030,9 +1028,7 @@ mod tests {
             })
             .collect();
 
-        let votes = vec![
-            ("representation.numeric.decimal_number".to_string(), 10),
-        ];
+        let votes = vec![("representation.numeric.decimal_number".to_string(), 10)];
         let top_labels: Vec<&str> = votes.iter().map(|(l, _)| l.as_str()).collect();
 
         let result = disambiguate_numeric(&values, &results, &top_labels);

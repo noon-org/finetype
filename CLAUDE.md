@@ -1,4 +1,16 @@
 
+## Backlog Discipline
+
+**Every bug fix, feature, and release MUST have a corresponding backlog task.**
+
+This includes:
+- **Bug fixes** — Create a task (status: Done if already fixed) with root cause, fix description, and affected files
+- **Releases** — Tag releases should reference the backlog tasks included
+- **Investigations** — Even exploratory work that produces findings gets a task
+- **Infrastructure changes** — CI, build system, deployment changes
+
+If the work is already done, create the task retroactively with status `Done`, check all ACs, and write a final summary. No exceptions — this is how we maintain an audit trail.
+
 <!-- BACKLOG.MD MCP GUIDELINES START -->
 
 <CRITICAL_INSTRUCTION>

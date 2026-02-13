@@ -536,9 +536,7 @@ fn post_process(result: &mut ClassificationResult, text: &str) {
     // Postal codes are typically 5 digits (ZIP), 5-4 (ZIP+4), or other country formats.
     // The model confuses these bidirectionally (24x issn→postal, 23x postal→issn).
     // A regex-free pattern check on the hyphenated format resolves this.
-    if result.label == "technology.code.issn"
-        || result.label == "geography.address.postal_code"
-    {
+    if result.label == "technology.code.issn" || result.label == "geography.address.postal_code" {
         let trimmed = text.trim();
         let bytes = trimmed.as_bytes();
         // ISSN pattern: exactly 9 chars, format DDDD-DDD[DX]
