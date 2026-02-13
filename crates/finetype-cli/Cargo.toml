@@ -14,10 +14,11 @@ name = "finetype"
 path = "src/main.rs"
 
 [features]
-default = ["cpu"]
+default = ["cpu", "embed-models"]
 cpu = ["finetype-model/cpu"]
 cuda = ["finetype-model/cuda"]
 metal = ["finetype-model/metal"]
+embed-models = []
 
 [dependencies]
 finetype-core = { workspace = true }

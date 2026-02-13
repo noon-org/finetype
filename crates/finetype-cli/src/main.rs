@@ -11,6 +11,15 @@ use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// EMBEDDED MODELS (compile-time)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[cfg(feature = "embed-models")]
+mod embedded {
+    include!(concat!(env!("OUT_DIR"), "/embedded_models.rs"));
+}
+
 #[derive(Parser)]
 #[command(name = "finetype")]
 #[command(author = "Hugh Cameron")]
@@ -441,7 +450,7 @@ fn cmd_infer(
     mode: InferenceMode,
     sample_size: usize,
 ) -> Result<()> {
-    use finetype_model::{CharClassifier, ClassificationResult, ColumnClassifier, ColumnConfig};
+    use finetype_model::{ClassificationResult, ColumnClassifier, ColumnConfig};
 
     // Collect inputs
     let inputs: Vec<String> = if let Some(text) = input {
@@ -516,7 +525,7 @@ fn cmd_infer(
     if matches!(mode, InferenceMode::Column) {
         match model_type {
             ModelType::CharCnn => {
-                let classifier = CharClassifier::load(&model)?;
+                let classifier = load_char_classifier(&model)?;
                 let config = ColumnConfig {
                     sample_size,
                     ..Default::default()
@@ -598,7 +607,7 @@ fn cmd_infer(
             }
         }
         ModelType::CharCnn => {
-            let classifier = CharClassifier::load(&model)?;
+            let classifier = load_char_classifier(&model)?;
             for text in inputs {
                 let result = classifier.classify(&text)?;
                 output_result(&text, &result, output, show_value, show_confidence);
@@ -614,6 +623,30 @@ fn cmd_infer(
     }
 
     Ok(())
+}
+
+/// Load a CharClassifier: try the model directory first, then fall back to
+/// the embedded model if the path doesn't exist (release binaries).
+fn load_char_classifier(model: &PathBuf) -> Result<finetype_model::CharClassifier> {
+    if model.exists() {
+        Ok(finetype_model::CharClassifier::load(model)?)
+    } else {
+        #[cfg(feature = "embed-models")]
+        {
+            Ok(finetype_model::CharClassifier::from_bytes(
+                embedded::FLAT_WEIGHTS,
+                embedded::FLAT_LABELS,
+                embedded::FLAT_CONFIG,
+            )?)
+        }
+        #[cfg(not(feature = "embed-models"))]
+        {
+            anyhow::bail!(
+                "Model directory {:?} not found. Build with `embed-models` feature for standalone use.",
+                model
+            )
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
