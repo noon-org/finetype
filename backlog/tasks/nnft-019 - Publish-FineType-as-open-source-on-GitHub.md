@@ -1,11 +1,11 @@
 ---
 id: NNFT-019
 title: Publish FineType as open source on GitHub
-status: In Progress
+status: Done
 assignee:
   - '@nightingale'
 created_date: '2026-02-10 05:32'
-updated_date: '2026-02-10 15:03'
+updated_date: '2026-02-11 06:30'
 labels:
   - release
   - open-source
@@ -26,7 +26,7 @@ Prepare the noon-org/finetype repository for public release. Clean up the codeba
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Repository is public under noon-org/finetype
+- [x] #1 Repository is public under noon-org/finetype
 - [x] #2 README includes: overview, installation, CLI usage, DuckDB usage, library usage, taxonomy reference
 - [x] #3 GitHub Actions CI: cargo test, cargo clippy, cargo fmt check
 - [x] #4 LICENSE file present (MIT)
@@ -50,10 +50,14 @@ AC #2: README enhanced with 3-level domain.category.type labels, 6-domain taxono
 AC#6: v0.1.0 tag created with annotated message covering features, models, and performance. CHANGELOG.md added with full release notes. README updated with model accuracy table (flat 91.97%, tiered 90.00%), test count (38), tiered training docs.
 
 Remaining: AC#1 requires Hugh to flip repository visibility to public on GitHub.
+
+AC#1: Repository is now public at https://github.com/noon-org/finetype. Homepage set to https://noon.sh/projects/finetype/. Description updated. README badge added linking to project page.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Prepared finetype repository for open source release. All preparation work complete — only repo visibility change (AC#1) remains, requiring repository owner action.\n\nChanges:\n- MIT LICENSE file created\n- README enhanced with: installation options (Homebrew, Cargo, source), CLI/DuckDB/library usage examples, 6-domain taxonomy table, model accuracy metrics (flat 91.97%, tiered 90.00%), architecture overview, training commands\n- GitHub Actions CI/CD: fmt, clippy, test, finetype check gates (NNFT-022)\n- Security audit: no internal/private references, credentials, or .env files\n- CHANGELOG.md added with v0.1.0 release notes\n- v0.1.0 tag created and pushed\n\nBlocked: AC#1 (make repo public) requires Hugh to change repository visibility settings on GitHub.
+
+Repository now public. GitHub homepage set to noon.sh/projects/finetype/, description updated, README badge added.
 <!-- SECTION:FINAL_SUMMARY:END -->

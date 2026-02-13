@@ -12,8 +12,11 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/noon-org/finetype"
+homepage = "https://noon.sh/projects/finetype/"
 authors = ["Hugh Cameron"]
 description = "Semantic type classification for text data"
+keywords = ["type-detection", "data-profiling", "classification", "duckdb", "text"]
+categories = ["text-processing", "science"]
 
 [workspace.dependencies]
 # Serialization
@@ -59,8 +62,8 @@ duckdb = { version = "=1.4.4", features = ["loadable-extension", "vscalar"] }
 libduckdb-sys = "=1.4.4"
 
 # Internal crates
-finetype-core = { path = "crates/finetype-core" }
-finetype-model = { path = "crates/finetype-model" }
+finetype-core = { version = "0.1.0", path = "crates/finetype-core" }
+finetype-model = { version = "0.1.0", path = "crates/finetype-model" }
 
 [profile.release]
 lto = true

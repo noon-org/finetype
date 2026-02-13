@@ -3,6 +3,10 @@ name = "finetype-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
 description = "CLI for FineType semantic type classification"
 
 [[bin]]

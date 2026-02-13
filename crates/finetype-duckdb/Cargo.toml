@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "DuckDB extension for semantic type classification"
+publish = false
 
 [lib]
 crate-type = ["cdylib"]
