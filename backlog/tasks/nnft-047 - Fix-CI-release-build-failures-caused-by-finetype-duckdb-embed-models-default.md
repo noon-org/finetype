@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@nightingale'
 created_date: '2026-02-13 10:58'
-updated_date: '2026-02-13 10:58'
+updated_date: '2026-02-13 11:16'
 labels:
   - bugfix
   - ci
@@ -34,15 +34,23 @@ Root cause: `finetype-duckdb` has `embed-models` as a default feature, requiring
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Fixed all four release build failures caused by `finetype-duckdb` build.rs panicking in CI (no model files).
+Fixed all CI and release build failures. Two rounds of fixes were needed:
 
-**Root cause:** `cargo build --release` and `cargo test --all` built the entire workspace. The DuckDB extension crate requires model files at compile time (via `embed-models` default feature), which aren't in the git repo.
+**Round 1:** `finetype-duckdb` build.rs panicked because model files aren't in git.
+- Added `default-members` to workspace Cargo.toml excluding `finetype-duckdb`
+- CI: dropped `--all` from clippy/test; release: added `-p finetype-cli`
+- Fixed pre-existing cargo fmt issues
 
-**Changes:**
-- `Cargo.toml` — Added `default-members` excluding `finetype-duckdb`. The DuckDB extension must be built explicitly with `cargo build -p finetype_duckdb`.
-- `.github/workflows/ci.yml` — Changed `cargo clippy --all` → `cargo clippy` and `cargo test --all` → `cargo test` to use default-members.
-- `.github/workflows/release.yml` — Added `-p finetype-cli` to both `cargo build` and `cross build` commands for explicit targeting.
-- Fixed pre-existing `cargo fmt` issues in `column.rs` and `inference.rs`.
+**Round 2:** `finetype-cli` build.rs also panicked — same root cause (model files gitignored, hosted on HuggingFace).
+- Added \"Download model from HuggingFace\" step to all CI/release jobs that compile `finetype-cli`
+- Downloads `model.safetensors`, `labels.json`, `config.yaml` from `noon-org/finetype-char-cnn` repo (~340KB total)
 
-All jobs verified locally: fmt ✓, clippy ✓, test (62 passed) ✓, smoke (23 passed) ✓.
+**Result:** CI (5 jobs) and Release (4 builds + release) all pass. v0.1.1 binaries published for x86_64-linux, aarch64-linux, x86_64-darwin, aarch64-darwin.
+
+**Files changed:**
+- `Cargo.toml` — added default-members
+- `.github/workflows/ci.yml` — model download + default-members flags + smoke test job
+- `.github/workflows/release.yml` — model download + explicit `-p finetype-cli`
+- `crates/finetype-model/src/column.rs` — cargo fmt
+- `crates/finetype-model/src/inference.rs` — cargo fmt"
 <!-- SECTION:FINAL_SUMMARY:END -->

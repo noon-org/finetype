@@ -624,7 +624,7 @@ technology.code.issn:
     type: string
     pattern: "^[0-9]{4}-[0-9]{3}[0-9X]$"
   tier: [VARCHAR, code]
-  release_priority: 2
+  release_priority: 3
   aliases: null
   samples:
     - "0028-0836"
@@ -634,6 +634,39 @@ technology.code.issn:
   notes: >
     v1 migration: Was code.issn. 8 characters including hyphens: XXXX-XXXX.
     Last character can be digit or X (for check digit 10).
+
+technology.code.doi:
+  title: "DOI"
+  description: >
+    Digital Object Identifier — a persistent identifier for digital content
+    (journal articles, datasets, books). Format: 10.XXXX/suffix where XXXX
+    is a registrant code and suffix is assigned by the registrant.
+  designation: universal
+  locales: [UNIVERSAL]
+  broad_type: VARCHAR
+  format_string: null
+  transform: "CAST({col} AS VARCHAR)"
+  transform_ext: null
+  decompose:
+    registrant: "REGEXP_EXTRACT({col}, '^10\\.([0-9]+)/')"
+    suffix: "REGEXP_EXTRACT({col}, '^10\\.[0-9]+/(.*)')"
+  validation:
+    type: string
+    pattern: "^10\\.[0-9]{4,9}/[^\\s]+$"
+  tier: [VARCHAR, code]
+  release_priority: 3
+  aliases: null
+  samples:
+    - "10.1038/nature12373"
+    - "10.1000/xyz123"
+    - "10.1016/j.cell.2009.01.043"
+    - "10.48550/arXiv.2301.07041"
+  references: null
+  notes: >
+    New in v2. DOI prefix always starts with "10." followed by registrant
+    code (4-9 digits), then "/" and a suffix. Common registrants include
+    10.1038 (Nature), 10.1016 (Elsevier), 10.1126 (Science), 10.1145 (ACM),
+    10.48550 (arXiv). Suffix may contain dots, hyphens, slashes.
 
 technology.code.locale_code:
   title: "Locale Code"

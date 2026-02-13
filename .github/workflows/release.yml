@@ -108,3 +108,89 @@ jobs:
           files: |
             artifacts/finetype-*.tar.gz
             artifacts/finetype-*.sha256
+
+  update-homebrew:
+    name: Update Homebrew Formula
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download SHA256 files
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${GITHUB_REF_NAME}"
+          BASE="https://github.com/noon-org/finetype/releases/download/${TAG}"
+          for target in aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu; do
+            curl -sfLO "${BASE}/finetype-${TAG}-${target}.tar.gz.sha256"
+          done
+          ls -la *.sha256
+
+      - name: Parse SHA256 values
+        id: sha
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "aarch64_macos=$(awk '{print $1}' finetype-${TAG}-aarch64-apple-darwin.tar.gz.sha256)" >> "$GITHUB_OUTPUT"
+          echo "x86_64_macos=$(awk '{print $1}' finetype-${TAG}-x86_64-apple-darwin.tar.gz.sha256)" >> "$GITHUB_OUTPUT"
+          echo "aarch64_linux=$(awk '{print $1}' finetype-${TAG}-aarch64-unknown-linux-gnu.tar.gz.sha256)" >> "$GITHUB_OUTPUT"
+          echo "x86_64_linux=$(awk '{print $1}' finetype-${TAG}-x86_64-unknown-linux-gnu.tar.gz.sha256)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: noon-org/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${GITHUB_REF_NAME}"
+          cat > homebrew-tap/Formula/finetype.rb << FORMULA
+          class Finetype < Formula
+            desc "Semantic type classifier for data profiling — detects data types from raw strings"
+            homepage "https://noon.sh/projects/finetype/"
+            license "MIT"
+            version "${VERSION}"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/noon-org/finetype/releases/download/${TAG}/finetype-${TAG}-aarch64-apple-darwin.tar.gz"
+                sha256 "${{ steps.sha.outputs.aarch64_macos }}"
+              else
+                url "https://github.com/noon-org/finetype/releases/download/${TAG}/finetype-${TAG}-x86_64-apple-darwin.tar.gz"
+                sha256 "${{ steps.sha.outputs.x86_64_macos }}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/noon-org/finetype/releases/download/${TAG}/finetype-${TAG}-aarch64-unknown-linux-gnu.tar.gz"
+                sha256 "${{ steps.sha.outputs.aarch64_linux }}"
+              else
+                url "https://github.com/noon-org/finetype/releases/download/${TAG}/finetype-${TAG}-x86_64-unknown-linux-gnu.tar.gz"
+                sha256 "${{ steps.sha.outputs.x86_64_linux }}"
+              end
+            end
+
+            def install
+              bin.install "finetype"
+            end
+
+            test do
+              assert_match "finetype", shell_output("#{bin}/finetype --version")
+            end
+          end
+          FORMULA
+
+      - name: Commit and push
+        run: |
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/finetype.rb
+          git diff --staged --quiet && echo "No changes" && exit 0
+          git commit -m "Update finetype to ${{ steps.version.outputs.version }}"
+          git push

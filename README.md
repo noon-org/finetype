@@ -2,22 +2,22 @@
 
 [![Project Page](https://img.shields.io/badge/noon.sh-FineType-blue)](https://noon.sh/projects/finetype/)
 
-Precision format detection for text data. FineType classifies strings into a rich taxonomy of 151 semantic types — each type is a **transformation contract** that guarantees a DuckDB cast expression will succeed.
+Precision format detection for text data. FineType classifies strings into a rich taxonomy of 152 semantic types — each type is a **transformation contract** that guarantees a DuckDB cast expression will succeed.
 
 ```
-$ finetype infer "192.168.1.1"
+$ finetype infer -i "192.168.1.1"
 technology.internet.ip_v4
 
-$ finetype infer "2024-01-15T10:30:00Z"
+$ finetype infer -i "2024-01-15T10:30:00Z"
 datetime.timestamp.iso_8601
 
-$ finetype infer "hello@example.com"
+$ finetype infer -i "hello@example.com"
 identity.person.email
 ```
 
 ## Features
 
-- **151 semantic types** across 6 domains — dates, times, IPs, emails, UUIDs, credit cards, and more
+- **152 semantic types** across 6 domains — dates, times, IPs, emails, UUIDs, credit cards, and more
 - **Transformation contracts** — each type maps to a DuckDB SQL expression that guarantees successful parsing
 - **Locale-aware** — handles region-specific formats (16+ locales for dates, addresses, phone numbers)
 - **Column-mode inference** — distribution-based disambiguation resolves ambiguous types (dates, years, coordinates)
@@ -132,12 +132,12 @@ println!("{} (confidence: {:.2})", result.label, result.confidence);
 
 ## Taxonomy
 
-FineType recognizes **151 types** across **6 domains**:
+FineType recognizes **152 types** across **6 domains**:
 
 | Domain | Types | Examples |
 |--------|-------|----------|
 | `datetime` | 46 | ISO 8601, RFC 2822, Unix timestamps, timezones, date formats |
-| `technology` | 34 | IPv4, IPv6, MAC addresses, URLs, UUIDs, hashes, user agents |
+| `technology` | 35 | IPv4, IPv6, MAC addresses, URLs, UUIDs, DOIs, hashes, user agents |
 | `identity` | 25 | Names, emails, phone numbers, passwords, gender symbols |
 | `representation` | 19 | Integers, floats, booleans, hex colors, base64, JSON |
 | `geography` | 16 | Latitude, longitude, countries, cities, postal codes |
@@ -266,7 +266,7 @@ Project tasks are tracked in [`backlog/`](backlog/) using [Backlog.md](https://b
 
 ### Taxonomy Definitions
 
-Each of the 151 types is defined in YAML under `labels/`:
+Each of the 152 types is defined in YAML under `labels/`:
 
 ```yaml
 datetime.timestamp.iso_8601:

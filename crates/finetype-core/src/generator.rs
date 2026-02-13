@@ -374,7 +374,20 @@ impl Generator {
             }
 
             // ── component (6 types) ──────────────────────────────────────
-            ("component", "year") => Ok(self.rng.gen_range(1800..2100).to_string()),
+            ("component", "year") => {
+                // Weighted distribution: modern years most common, then historical, then future
+                let year = if self.rng.gen_bool(0.60) {
+                    // Modern era (60%): 1900-2025
+                    self.rng.gen_range(1900..2026)
+                } else if self.rng.gen_bool(0.625) {
+                    // Historical (25% of total): 1000-1900
+                    self.rng.gen_range(1000..1900)
+                } else {
+                    // Future (15% of total): 2026-2100
+                    self.rng.gen_range(2026..2101)
+                };
+                Ok(year.to_string())
+            }
             ("component", "month_name") => {
                 let months = locale_data::month_names(self.current_locale());
                 Ok(months[self.rng.gen_range(0..months.len())].to_string())
@@ -578,17 +591,41 @@ impl Generator {
                 Ok(token)
             }
 
-            // ── code (6 types) ───────────────────────────────────────────
+            // ── code (7 types) ───────────────────────────────────────────
             ("code", "isbn") => {
-                let prefix = if self.rng.gen_bool(0.8) { "978" } else { "979" };
-                let group = self.rng.gen_range(0..9);
-                let publisher = self.rng.gen_range(10000..99999);
-                let title = self.rng.gen_range(100..999);
-                let check = self.rng.gen_range(0..9);
-                Ok(format!(
-                    "{}-{}-{:05}-{:03}-{}",
-                    prefix, group, publisher, title, check
-                ))
+                if self.rng.gen_bool(0.6) {
+                    // ISBN-13 (60% of samples)
+                    let prefix = if self.rng.gen_bool(0.8) { "978" } else { "979" };
+                    let group = self.rng.gen_range(0..9);
+                    let publisher = self.rng.gen_range(10000..99999);
+                    let title = self.rng.gen_range(100..999);
+                    let digits = format!("{}{}{:05}{:03}", prefix, group, publisher, title);
+                    let check = self.isbn13_check_digit(&digits);
+                    if self.rng.gen_bool(0.6) {
+                        // With hyphens
+                        Ok(format!(
+                            "{}-{}-{:05}-{:03}-{}",
+                            prefix, group, publisher, title, check
+                        ))
+                    } else {
+                        // Without hyphens (bare digits)
+                        Ok(format!("{}{}", digits, check))
+                    }
+                } else {
+                    // ISBN-10 (40% of samples)
+                    let group = self.rng.gen_range(0..9);
+                    let publisher = self.rng.gen_range(1000..99999);
+                    let title = self.rng.gen_range(10..999);
+                    let body = format!("{}{:05}{:03}", group, publisher, title);
+                    let check = self.isbn10_check_digit(&body);
+                    if self.rng.gen_bool(0.6) {
+                        // With hyphens
+                        Ok(format!("{}-{:05}-{:03}-{}", group, publisher, title, check))
+                    } else {
+                        // Without hyphens
+                        Ok(format!("{}{}", body, check))
+                    }
+                }
             }
             ("code", "imei") => {
                 // Generate Luhn-valid 15-digit IMEI with realistic TAC prefixes
@@ -649,6 +686,87 @@ impl Generator {
                     self.rng.gen_range(100..999),
                     check
                 ))
+            }
+            ("code", "doi") => {
+                // DOI format: 10.XXXX/suffix
+                // Realistic registrant codes from major publishers
+                let registrants = [
+                    "1038",  // Nature
+                    "1016",  // Elsevier
+                    "1126",  // Science (AAAS)
+                    "1145",  // ACM
+                    "1109",  // IEEE
+                    "1002",  // Wiley
+                    "1007",  // Springer
+                    "1371",  // PLOS
+                    "1073",  // PNAS
+                    "1186",  // BioMed Central
+                    "3389",  // Frontiers
+                    "1021",  // ACS (chemistry)
+                    "48550", // arXiv
+                    "5281",  // Zenodo
+                    "1000",  // generic
+                    "7554",  // eLife
+                ];
+                let reg = registrants[self.rng.gen_range(0..registrants.len())];
+
+                // Generate realistic suffixes
+                let suffix = match self.rng.gen_range(0..5) {
+                    0 => {
+                        // Journal style: journal.year.identifier
+                        let journals = [
+                            "nature", "science", "cell", "lancet", "nphys", "nmat",
+                        ];
+                        let journal = journals[self.rng.gen_range(0..journals.len())];
+                        format!("{}{:05}", journal, self.rng.gen_range(10000..99999))
+                    }
+                    1 => {
+                        // Elsevier/journal path style: j.journal.year.month.day
+                        format!(
+                            "j.{}.{}.{:02}.{:03}",
+                            ["cell", "neuron", "jmb", "jtbi", "amc"]
+                                [self.rng.gen_range(0..5)],
+                            self.rng.gen_range(2000..2026),
+                            self.rng.gen_range(1..13),
+                            self.rng.gen_range(1..100)
+                        )
+                    }
+                    2 => {
+                        // arXiv style: arXiv.YYMM.NNNNN
+                        format!(
+                            "arXiv.{:02}{:02}.{:05}",
+                            self.rng.gen_range(18..26),
+                            self.rng.gen_range(1..13),
+                            self.rng.gen_range(10..99999)
+                        )
+                    }
+                    3 => {
+                        // Simple alphanumeric
+                        let len = self.rng.gen_range(5..12);
+                        let chars: String = (0..len)
+                            .map(|_| {
+                                let c = self.rng.gen_range(0..36);
+                                if c < 10 {
+                                    (b'0' + c) as char
+                                } else {
+                                    (b'a' + c - 10) as char
+                                }
+                            })
+                            .collect();
+                        chars
+                    }
+                    _ => {
+                        // Structured with slashes: s12345-678-90123-4
+                        format!(
+                            "s{:05}-{:03}-{:05}-{}",
+                            self.rng.gen_range(10000..99999),
+                            self.rng.gen_range(0..999),
+                            self.rng.gen_range(10000..99999),
+                            self.rng.gen_range(0..9)
+                        )
+                    }
+                };
+                Ok(format!("10.{}/{}", reg, suffix))
             }
             ("code", "locale_code") => {
                 let codes = [
@@ -1636,6 +1754,31 @@ impl Generator {
             })
             .sum();
         ((10 - (sum % 10)) % 10) as u8
+    }
+
+    /// Compute ISBN-13 check digit (same algorithm as EAN-13).
+    /// Input: 12-digit string. Returns single check digit 0-9.
+    fn isbn13_check_digit(&self, digits: &str) -> u8 {
+        self.ean_check_digit(digits)
+    }
+
+    /// Compute ISBN-10 check digit.
+    /// Input: 9-digit string. Returns check character ('0'-'9' or 'X').
+    fn isbn10_check_digit(&self, digits: &str) -> char {
+        let sum: u32 = digits
+            .bytes()
+            .enumerate()
+            .map(|(i, b)| {
+                let d = (b - b'0') as u32;
+                d * (10 - i as u32)
+            })
+            .sum();
+        let remainder = (11 - (sum % 11)) % 11;
+        if remainder == 10 {
+            'X'
+        } else {
+            (b'0' + remainder as u8) as char
+        }
     }
 
     fn random_datetime(&mut self) -> NaiveDateTime {

@@ -259,7 +259,24 @@ if echo "$OUT" | grep -qi "email"; then
 else
     fail "column mode works from /tmp without models/ dir" "got: $OUT"
 fi
-rm -f "$TMPBIN2"
+
+# Profile command with embedded model (no models/ dir)
+TMPCSV=$(mktemp /tmp/finetype-smoke-csv-XXXXXX.csv)
+cat > "$TMPCSV" <<'CSVEOF'
+name,email,age
+John Doe,john@example.com,30
+Jane Smith,jane@test.org,25
+Bob Wilson,bob@company.io,45
+CSVEOF
+
+OUT=$("$TMPBIN2" profile -f "$TMPCSV" 2>/dev/null) || true
+if echo "$OUT" | grep -qi "email\|Column Profile"; then
+    pass "profile works from /tmp without models/ dir"
+else
+    ERR=$("$TMPBIN2" profile -f "$TMPCSV" 2>&1) || true
+    fail "profile works from /tmp without models/ dir" "got: $ERR"
+fi
+rm -f "$TMPBIN2" "$TMPCSV"
 
 # ── Error Handling ────────────────────────────────────────────────────────────
 

@@ -1379,10 +1379,10 @@ fn cmd_profile(
     sample_size: usize,
     delimiter: Option<char>,
 ) -> Result<()> {
-    use finetype_model::{CharClassifier, ColumnClassifier, ColumnConfig};
+    use finetype_model::{ColumnClassifier, ColumnConfig};
 
     eprintln!("Loading model from {:?}", model);
-    let classifier = CharClassifier::load(&model)?;
+    let classifier = load_char_classifier(&model)?;
 
     let config = ColumnConfig {
         sample_size,
