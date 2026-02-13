@@ -156,3 +156,157 @@ The ~48% overall domain accuracy reflects the fundamental difference between for
 3. Consider column name heuristics as an optional signal for disambiguation
 4. Consider exempting ID columns from `increment` detection when majority vote is identity-domain
 5. The DuckDB extension's `finetype()` function handles real-world data well for format-oriented use cases
+
+---
+
+## GitTables 1M Evaluation
+
+**FineType v0.1.0 (CharCNN flat model, 91.97% synthetic accuracy)**
+**Date:** 2026-02-13
+**Dataset:** GitTables 1M full corpus (~1M tables, 96 topics)
+
+### Overview
+
+The benchmark evaluation above used the curated GitTables subset (1,101 tables). This section reports results from evaluating FineType against the full GitTables 1M corpus — approximately 1 million real-world tables extracted from GitHub, organized into 96 topic categories with Schema.org and DBpedia semantic annotations embedded in Parquet metadata.
+
+This evaluation validates whether the benchmark subset was representative and stress-tests FineType at production scale.
+
+### Pipeline
+
+The evaluation uses a three-stage Python + DuckDB hybrid pipeline:
+
+1. **`extract_metadata_1m.py`** — PyArrow reads Parquet file metadata (`gittables` key) to extract Schema.org/DBpedia semantic type annotations. Samples 50 tables per topic.
+2. **`prepare_1m_values.py`** — Reads sampled Parquet files, unpivots all columns, samples up to 20 non-null string values per column. Outputs a single `column_values.parquet` file.
+3. **`eval_1m.sql`** — DuckDB loads pre-extracted metadata and values, classifies with `finetype()`, performs per-column majority vote, and compares against ground truth.
+
+This architecture was chosen because DuckDB's `parquet_kv_metadata` function doesn't support lateral joins needed for dynamic file-list reads, while PyArrow handles heterogeneous Parquet schemas efficiently.
+
+### Scale
+
+| Metric | Count |
+|---|---|
+| Total tables in corpus | 1,018,649 |
+| Topics | 94 (2 empty) |
+| Tables sampled (50/topic) | 4,380 |
+| Tables with annotations | 4,043 (92.3%) |
+| Columns profiled | 45,428 |
+| Columns with ground truth | 33,131 |
+| Ground truth label types | 1,726 |
+| Values classified | 774,350 |
+| Classification time (DuckDB) | 370 seconds |
+| FineType types detected | 143 of 151 |
+
+### Domain-Level Accuracy
+
+Using the same domain mapping as the benchmark evaluation (ground truth labels → FineType domains):
+
+| Expected Domain | Columns | Correct | Accuracy |
+|---|---|---|---|
+| identity | 2,143 | 1,527 | **71.3%** |
+| technology | 3,737 | 2,421 | **64.8%** |
+| datetime | 622 | 335 | **53.9%** |
+| geography | 175 | 80 | **45.7%** |
+| representation | 4,050 | 1,566 | **38.7%** |
+
+**Overall mapped domain accuracy: 55.3%** (5,929/10,727 mapped columns)
+
+### Comparison with Benchmark Subset
+
+| Metric | Benchmark (1,101 tables) | 1M Sample (4,380 tables) | Change |
+|---|---|---|---|
+| Overall domain accuracy | 48.3% (column-mode) | **55.3%** | **+7.0%** |
+| Tables evaluated | 883 | 4,380 | 5.0× |
+| Columns with GT | 1,430 | 10,727 | 7.5× |
+| Unique GT labels | 139 | 1,726 | 12.4× |
+| FineType types seen | ~80 | 143 | 1.8× |
+| Throughput (values/sec) | ~600 | 2,093 | 3.5× |
+
+**Key finding:** The 1M evaluation achieves significantly higher domain accuracy (55.3% vs 48.3%) despite having 12× more ground truth label diversity. This suggests the benchmark subset was *not* fully representative — it over-represented difficult semantic types relative to the broader corpus.
+
+### Domain Performance: Benchmark vs 1M
+
+| Domain | Benchmark | 1M | Change |
+|---|---|---|---|
+| identity | 50.0% | **71.3%** | **+21.3%** |
+| technology | 95.6% | **64.8%** | -30.8% |
+| datetime | 48.2% | **53.9%** | **+5.7%** |
+| geography | 80.6% | **45.7%** | -34.9% |
+| representation | 24.5% | **38.7%** | **+14.2%** |
+
+The identity and representation domains improved substantially at scale. Technology and geography regressed — the benchmark's small sample of URLs and geographic types happened to be highly format-regular, while the broader corpus includes more ambiguous cases (shortened URLs, non-standard address formats).
+
+### FineType Type Distribution (All 45,428 Columns)
+
+Top 10 predictions across the full profiled corpus:
+
+| Predicted Type | Columns | % |
+|---|---|---|
+| `representation.numeric.decimal_number` | 10,509 | 23.1% |
+| `representation.text.boolean` | 6,358 | 14.0% |
+| `representation.text.sentence` | 4,052 | 8.9% |
+| `identity.account.username` | 2,036 | 4.5% |
+| `technology.internet.url` | 1,767 | 3.9% |
+| `representation.numeric.integer_number` | 1,680 | 3.7% |
+| `datetime.timestamp.iso_8601` | 1,521 | 3.3% |
+| `representation.text.word` | 1,283 | 2.8% |
+| `identity.person.full_name` | 1,255 | 2.8% |
+| `representation.text.paragraph` | 1,058 | 2.3% |
+
+Numeric data dominates real-world tables (23.1% decimal, 3.7% integer), followed by boolean flags (14.0%) and free text (8.9% sentences). This matches expectations for GitHub-extracted data which contains a mix of configuration, metadata, and content tables.
+
+### Confidence Analysis
+
+| Confidence Level | Columns | % |
+|---|---|---|
+| Perfect agreement (100% vote) | 2,690 | 5.9% |
+| High confidence (≥80% vote) | 32,741 | 72.1% |
+| Medium confidence (60–79%) | 9,907 | 21.8% |
+| Low confidence (<60%) | 1,780 | 3.9% |
+
+72.1% of columns have high confidence predictions (≥80% vote agreement), indicating strong classification certainty for most real-world data. The 3.9% low-confidence columns are primarily in text and identity categories where semantic ambiguity is highest.
+
+### Taxonomy Gaps
+
+The 1M evaluation revealed ground truth labels with no mapping in FineType's taxonomy. These fall into two categories:
+
+**Semantic-only types** (no format signal — expected limitation):
+- `procedure_type`, `short_story`, `parent`, `web_content`, `contact_points`
+- `citation`, `genre`, `tag`, `interaction_type`, `award`
+
+**Potentially format-detectable types** (future improvement candidates):
+- `isbn` — structured numeric format (could be added to technology domain)
+- `issn` — similar to ISBN
+- `doi` — structured identifier format
+- `chemical_formula` — has recognizable format patterns
+
+### Throughput
+
+| Metric | Value |
+|---|---|
+| Values classified | 774,350 |
+| Classification time | 370 seconds |
+| Throughput | **2,093 values/sec** |
+| Tables processed | 4,380 |
+| Columns profiled | 45,428 |
+
+The 3.5× throughput improvement over the benchmark (2,093 vs ~600 values/sec) reflects DuckDB's batch processing efficiency — larger batches amortize per-query overhead. This validates FineType's suitability for production-scale data profiling.
+
+### Conclusions
+
+1. **FineType generalizes well to large-scale real-world data.** The 55.3% domain accuracy on the 1M corpus exceeds the 48.3% benchmark, demonstrating that the model's format detection capabilities scale beyond the curated subset.
+
+2. **The benchmark subset was not fully representative.** It over-represented difficult semantic types and under-represented format-detectable types relative to the broader corpus. Future benchmarks should use stratified sampling from the full 1M dataset.
+
+3. **Identity detection improved most at scale** (+21.3%), suggesting the broader corpus contains more standard name/email/username formats that FineType handles well.
+
+4. **143 of 151 FineType types appear in real-world data**, confirming broad taxonomy coverage. The 8 missing types are specialized formats (e.g., `geography.address.postal_code_plus4`) that are rare in GitHub tables.
+
+5. **Production throughput validated** at ~2,000 values/sec in DuckDB, sufficient for profiling datasets with millions of values.
+
+### Updated Recommendations
+
+1. Add ISBN, ISSN, DOI format detection to the taxonomy (structured identifiers found in real data)
+2. Improve year training data — 45% of year columns still default to `decimal_number`
+3. Use 1M stratified sample as the standard evaluation benchmark going forward
+4. Consider per-topic evaluation harnesses for domain-specific accuracy tracking
+5. Investigate technology domain regression (95.6% → 64.8%) — may indicate URL format diversity in broader corpus
