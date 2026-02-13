@@ -43,6 +43,15 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
+      - name: Download model from HuggingFace
+        run: |
+          mkdir -p models/char-cnn-v2
+          cd models/char-cnn-v2
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/model.safetensors
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/labels.json
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/config.yaml
+          ls -la
+
       - name: Install cross
         if: matrix.cross
         run: cargo install cross --git https://github.com/cross-rs/cross

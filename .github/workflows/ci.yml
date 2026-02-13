@@ -30,6 +30,13 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+      - name: Download model from HuggingFace
+        run: |
+          mkdir -p models/char-cnn-v2
+          cd models/char-cnn-v2
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/model.safetensors
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/labels.json
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/config.yaml
       - run: cargo clippy -- -D warnings
 
   test:
@@ -39,6 +46,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Download model from HuggingFace
+        run: |
+          mkdir -p models/char-cnn-v2
+          cd models/char-cnn-v2
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/model.safetensors
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/labels.json
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/config.yaml
       - run: cargo test
 
   check:
@@ -48,6 +62,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Download model from HuggingFace
+        run: |
+          mkdir -p models/char-cnn-v2
+          cd models/char-cnn-v2
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/model.safetensors
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/labels.json
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/config.yaml
       - run: cargo build --release
       - run: ./target/release/finetype check --verbose
 
@@ -58,4 +79,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Download model from HuggingFace
+        run: |
+          mkdir -p models/char-cnn-v2
+          cd models/char-cnn-v2
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/model.safetensors
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/labels.json
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/config.yaml
       - run: ./tests/smoke.sh
