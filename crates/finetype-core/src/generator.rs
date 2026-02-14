@@ -1,4 +1,4 @@
-//! Synthetic data generation for all 151 type definitions.
+//! Synthetic data generation for all type definitions.
 //!
 //! Generates synthetic training data using taxonomy keys:
 //! `domain.category.type` (e.g., `datetime.timestamp.iso_8601`).
@@ -933,7 +933,7 @@ impl Generator {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // DOMAIN: identity (25 types)
+    // DOMAIN: identity (32 types)
     // ═══════════════════════════════════════════════════════════════════════════
 
     fn gen_identity(&mut self, category: &str, type_name: &str) -> Result<String, GeneratorError> {
@@ -1185,6 +1185,119 @@ impl Generator {
                         ))
                     }
                 }
+            }
+
+            // ── payment: finance identifiers (7 types) ──────────────────
+            ("payment", "isin") => {
+                // ISIN: 2-letter country code + 9 alphanumeric NSIN + 1 Luhn check digit
+                let countries = [
+                    "US", "GB", "DE", "FR", "JP", "CA", "AU", "CH", "NL", "SE", "IT", "ES", "HK",
+                    "SG", "KR", "BR", "IN", "ZA", "MX", "NO", "DK", "FI", "BE", "AT", "IE", "LU",
+                    "NZ", "TW", "IL", "PT",
+                ];
+                let country = countries[self.rng.gen_range(0..countries.len())];
+                // NSIN: 9 alphanumeric characters (digits + uppercase letters)
+                let alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                let nsin: String = (0..9)
+                    .map(|_| alphanum.as_bytes()[self.rng.gen_range(0..alphanum.len())] as char)
+                    .collect();
+                let body = format!("{}{}", country, nsin);
+                let check = self.isin_check_digit(&body);
+                Ok(format!("{}{}", body, check))
+            }
+            ("payment", "cusip") => {
+                // CUSIP: 6 issuer chars + 2 issue chars + 1 check digit
+                let alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                let body: String = (0..8)
+                    .map(|_| {
+                        if self.rng.gen_bool(0.6) {
+                            // Bias toward digits for realistic look
+                            (b'0' + self.rng.gen_range(0..10)) as char
+                        } else {
+                            alphanum.as_bytes()[self.rng.gen_range(0..alphanum.len())] as char
+                        }
+                    })
+                    .collect();
+                let check = self.cusip_check_digit(&body);
+                Ok(format!("{}{}", body, check))
+            }
+            ("payment", "sedol") => {
+                // SEDOL: 6 chars (consonants + digits, no vowels) + 1 weighted check digit
+                let sedol_chars = "0123456789BCDFGHJKLMNPQRSTVWXYZ";
+                let body: String = (0..6)
+                    .map(|_| {
+                        sedol_chars.as_bytes()[self.rng.gen_range(0..sedol_chars.len())] as char
+                    })
+                    .collect();
+                let check = self.sedol_check_digit(&body);
+                Ok(format!("{}{}", body, check))
+            }
+            ("payment", "swift_bic") => {
+                // SWIFT/BIC: 4 bank letters + 2 country letters + 2 location + optional 3 branch
+                let countries = [
+                    "US", "GB", "DE", "FR", "CH", "JP", "AU", "SG", "HK", "NL", "IT", "ES", "CA",
+                    "SE", "NO", "DK", "BE", "AT", "IE", "LU",
+                ];
+                let bank: String = (0..4)
+                    .map(|_| (b'A' + self.rng.gen_range(0..26)) as char)
+                    .collect();
+                let country = countries[self.rng.gen_range(0..countries.len())];
+                let location: String = (0..2)
+                    .map(|_| {
+                        if self.rng.gen_bool(0.7) {
+                            (b'A' + self.rng.gen_range(0..26)) as char
+                        } else {
+                            (b'0' + self.rng.gen_range(0..10)) as char
+                        }
+                    })
+                    .collect();
+                if self.rng.gen_bool(0.4) {
+                    // 11-char with branch code
+                    let branch: String = (0..3)
+                        .map(|_| {
+                            if self.rng.gen_bool(0.7) {
+                                (b'A' + self.rng.gen_range(0..26)) as char
+                            } else {
+                                (b'0' + self.rng.gen_range(0..10)) as char
+                            }
+                        })
+                        .collect();
+                    Ok(format!("{}{}{}{}", bank, country, location, branch))
+                } else {
+                    // 8-char (head office)
+                    Ok(format!("{}{}{}", bank, country, location))
+                }
+            }
+            ("payment", "lei") => {
+                // LEI: 4-digit LOU prefix + 14 alphanumeric entity + 2 check digits (ISO 7064)
+                let lou_prefixes = [
+                    "5299", "2138", "5493", "3358", "8945", "9598", "7245", "6354", "3157", "2549",
+                    "5067", "8156",
+                ];
+                let lou = lou_prefixes[self.rng.gen_range(0..lou_prefixes.len())];
+                let alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                let entity: String = (0..14)
+                    .map(|_| alphanum.as_bytes()[self.rng.gen_range(0..alphanum.len())] as char)
+                    .collect();
+                let body = format!("{}{}", lou, entity);
+                let check = self.lei_check_digits(&body);
+                Ok(format!("{}{}", body, check))
+            }
+            ("payment", "currency_code") => {
+                let codes = [
+                    "USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD", "CNY", "HKD", "NZD", "SEK",
+                    "NOK", "DKK", "SGD", "KRW", "INR", "BRL", "ZAR", "MXN", "TWD", "THB", "IDR",
+                    "MYR", "PHP", "PLN", "CZK", "HUF", "TRY", "ILS", "AED", "SAR", "RUB", "CLP",
+                    "COP", "PEN", "ARS", "EGP", "NGN", "KES", "GHS",
+                ];
+                Ok(codes[self.rng.gen_range(0..codes.len())].to_string())
+            }
+            ("payment", "currency_symbol") => {
+                let symbols = [
+                    "$", "€", "£", "¥", "₹", "₩", "₿", "₽", "₺", "₴", "₸", "₡", "₵", "₫", "₭", "₮",
+                    "₱", "₲", "₳", "₦", "৳", "฿", "₪", "﷼", "₢", "₣", "₤", "₧", "₯", "₰",
+                ];
+                Ok(symbols[self.rng.gen_range(0..symbols.len())].to_string())
             }
 
             // ── academic (2 types) ───────────────────────────────────────
@@ -1776,6 +1889,94 @@ impl Generator {
         } else {
             (b'0' + remainder as u8) as char
         }
+    }
+
+    /// Convert alphanumeric character to numeric value for ISIN/CUSIP/SEDOL.
+    /// Digits 0-9 map to 0-9, letters A-Z map to 10-35.
+    fn alpha_to_num(c: char) -> u32 {
+        if c.is_ascii_digit() {
+            (c as u32) - ('0' as u32)
+        } else {
+            (c.to_ascii_uppercase() as u32) - ('A' as u32) + 10
+        }
+    }
+
+    /// Compute ISIN check digit using Luhn algorithm on alpha-to-numeric expanded string.
+    /// Each letter is expanded to two digits (A=10, B=11, ..., Z=35), then standard Luhn.
+    fn isin_check_digit(&self, body: &str) -> u8 {
+        // Expand alphanumeric to digit string
+        let expanded: String = body
+            .chars()
+            .flat_map(|c| {
+                let val = Self::alpha_to_num(c);
+                if val >= 10 {
+                    vec![(val / 10) as u8 + b'0', (val % 10) as u8 + b'0']
+                } else {
+                    vec![val as u8 + b'0']
+                }
+            })
+            .map(|b| b as char)
+            .collect();
+        self.luhn_check_digit(&expanded)
+    }
+
+    /// Compute CUSIP check digit.
+    /// Characters at even positions (0-indexed) have face value;
+    /// characters at odd positions are doubled. Sum mod 10.
+    fn cusip_check_digit(&self, body: &str) -> u8 {
+        let sum: u32 = body
+            .chars()
+            .enumerate()
+            .map(|(i, c)| {
+                let mut val = Self::alpha_to_num(c);
+                if i % 2 == 1 {
+                    val *= 2;
+                }
+                (val / 10) + (val % 10)
+            })
+            .sum();
+        ((10 - (sum % 10)) % 10) as u8
+    }
+
+    /// Compute SEDOL check digit using weights [1, 3, 1, 7, 3, 9].
+    /// Letters: B=11, C=12, ..., Z=35 (vowels skipped in valid SEDOLs but
+    /// the algorithm still maps them if present).
+    fn sedol_check_digit(&self, body: &str) -> u8 {
+        let weights = [1u32, 3, 1, 7, 3, 9];
+        let sum: u32 = body
+            .chars()
+            .zip(weights.iter())
+            .map(|(c, &w)| Self::alpha_to_num(c) * w)
+            .sum();
+        ((10 - (sum % 10)) % 10) as u8
+    }
+
+    /// Compute LEI check digits using ISO 7064 Mod 97-10 (same as IBAN).
+    /// Returns a 2-character string (e.g., "55", "72", "02").
+    fn lei_check_digits(&self, body: &str) -> String {
+        // Convert letters to numbers: A=10, B=11, ..., Z=35
+        let expanded: String = body
+            .chars()
+            .flat_map(|c| {
+                let val = Self::alpha_to_num(c);
+                if val >= 10 {
+                    format!("{}", val).chars().collect::<Vec<_>>()
+                } else {
+                    vec![c]
+                }
+            })
+            .collect();
+        // Append "00" for check digit calculation
+        let with_zeros = format!("{}00", expanded);
+        // Compute mod 97 on the large number (process in chunks to avoid overflow)
+        let mut remainder: u64 = 0;
+        for chunk in with_zeros.as_bytes().chunks(9) {
+            let s: String = chunk.iter().map(|&b| b as char).collect();
+            let combined = format!("{}{}", remainder, s);
+            remainder = combined.parse::<u64>().unwrap_or(0) % 97;
+        }
+        let check = 98 - remainder;
+        format!("{:02}", check)
     }
 
     fn random_datetime(&mut self) -> NaiveDateTime {
@@ -2443,5 +2644,166 @@ test.test.test:
             .filter(|s| !s.label.ends_with(".UNIVERSAL"))
             .count();
         assert!(locale_count > 0, "Should have locale-specific labels");
+    }
+
+    #[test]
+    fn test_isin_check_digit_valid() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        for _ in 0..100 {
+            let val = gen.generate_value("identity.payment.isin").unwrap();
+            assert_eq!(val.len(), 12, "ISIN should be 12 chars: {}", val);
+            assert!(
+                val[..2].chars().all(|c| c.is_ascii_uppercase()),
+                "ISIN should start with 2 letters: {}",
+                val
+            );
+            // Verify ISIN check digit by recomputing
+            let body = &val[..11];
+            let expected = gen.isin_check_digit(body);
+            let actual = val.chars().last().unwrap().to_digit(10).unwrap() as u8;
+            assert_eq!(
+                actual, expected,
+                "ISIN {} has invalid check digit (expected {}, got {})",
+                val, expected, actual
+            );
+        }
+    }
+
+    #[test]
+    fn test_isin_known_values() {
+        // Verify against known real ISINs
+        let gen = Generator::with_seed(test_taxonomy(), 42);
+        // Apple Inc: US0378331005
+        assert_eq!(gen.isin_check_digit("US037833100"), 5);
+        // SAP SE: DE0007164600
+        assert_eq!(gen.isin_check_digit("DE000716460"), 0);
+    }
+
+    #[test]
+    fn test_cusip_check_digit_valid() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        for _ in 0..100 {
+            let val = gen.generate_value("identity.payment.cusip").unwrap();
+            assert_eq!(val.len(), 9, "CUSIP should be 9 chars: {}", val);
+            let body = &val[..8];
+            let expected = gen.cusip_check_digit(body);
+            let actual = val.chars().last().unwrap().to_digit(10).unwrap() as u8;
+            assert_eq!(
+                actual, expected,
+                "CUSIP {} has invalid check digit (expected {}, got {})",
+                val, expected, actual
+            );
+        }
+    }
+
+    #[test]
+    fn test_sedol_check_digit_valid() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        for _ in 0..100 {
+            let val = gen.generate_value("identity.payment.sedol").unwrap();
+            assert_eq!(val.len(), 7, "SEDOL should be 7 chars: {}", val);
+            // No vowels allowed in SEDOL
+            assert!(
+                !val[..6].contains(['A', 'E', 'I', 'O', 'U']),
+                "SEDOL should not contain vowels: {}",
+                val
+            );
+            let body = &val[..6];
+            let expected = gen.sedol_check_digit(body);
+            let actual = val.chars().last().unwrap().to_digit(10).unwrap() as u8;
+            assert_eq!(
+                actual, expected,
+                "SEDOL {} has invalid check digit (expected {}, got {})",
+                val, expected, actual
+            );
+        }
+    }
+
+    #[test]
+    fn test_swift_bic_format() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        let mut saw_8char = false;
+        let mut saw_11char = false;
+        for _ in 0..100 {
+            let val = gen.generate_value("identity.payment.swift_bic").unwrap();
+            assert!(
+                val.len() == 8 || val.len() == 11,
+                "SWIFT/BIC should be 8 or 11 chars: {} (len={})",
+                val,
+                val.len()
+            );
+            // First 4 chars must be letters (bank code)
+            assert!(
+                val[..4].chars().all(|c| c.is_ascii_uppercase()),
+                "SWIFT bank code should be uppercase letters: {}",
+                val
+            );
+            // Chars 5-6 must be letters (country code)
+            assert!(
+                val[4..6].chars().all(|c| c.is_ascii_uppercase()),
+                "SWIFT country code should be uppercase letters: {}",
+                val
+            );
+            if val.len() == 8 {
+                saw_8char = true;
+            }
+            if val.len() == 11 {
+                saw_11char = true;
+            }
+        }
+        assert!(saw_8char, "Should generate 8-char SWIFT codes");
+        assert!(saw_11char, "Should generate 11-char SWIFT codes");
+    }
+
+    #[test]
+    fn test_lei_check_digits_valid() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        for _ in 0..100 {
+            let val = gen.generate_value("identity.payment.lei").unwrap();
+            assert_eq!(val.len(), 20, "LEI should be 20 chars: {}", val);
+            // Verify check digits by recomputing
+            let body = &val[..18];
+            let expected = gen.lei_check_digits(body);
+            let actual = &val[18..];
+            assert_eq!(
+                actual, expected,
+                "LEI {} has invalid check digits (expected {}, got {})",
+                val, expected, actual
+            );
+        }
+    }
+
+    #[test]
+    fn test_currency_code_format() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        for _ in 0..50 {
+            let val = gen
+                .generate_value("identity.payment.currency_code")
+                .unwrap();
+            assert_eq!(val.len(), 3, "Currency code should be 3 chars: {}", val);
+            assert!(
+                val.chars().all(|c| c.is_ascii_uppercase()),
+                "Currency code should be uppercase: {}",
+                val
+            );
+        }
+    }
+
+    #[test]
+    fn test_currency_symbol_format() {
+        let mut gen = Generator::with_seed(test_taxonomy(), 42);
+        for _ in 0..50 {
+            let val = gen
+                .generate_value("identity.payment.currency_symbol")
+                .unwrap();
+            assert!(!val.is_empty(), "Currency symbol should not be empty");
+            // Should be short (1-3 chars typically)
+            assert!(
+                val.len() <= 4,
+                "Currency symbol should be short: {} (len={})",
+                val,
+                val.len()
+            );
+        }
     }
 }
