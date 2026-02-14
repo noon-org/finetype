@@ -5,7 +5,7 @@ status: To Do
 assignee:
   - '@nightingale'
 created_date: '2026-02-13 10:40'
-updated_date: '2026-02-14 10:03'
+updated_date: '2026-02-14 10:08'
 labels:
   - architecture
   - locale
@@ -14,6 +14,10 @@ dependencies: []
 references:
   - labels/definitions_datetime.yaml
   - crates/finetype-core/src/generator.rs
+  - >-
+    https://learn.microsoft.com/en-us/dotnet/standard/base-types/formatting-types
+  - >-
+    https://posit-dev.github.io/great-tables/reference/#value-formatting-functions
 documentation:
   - 'https://duckdb.org/docs/sql/functions/dateformat.html'
 priority: medium
