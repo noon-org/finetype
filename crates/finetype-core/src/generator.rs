@@ -714,9 +714,7 @@ impl Generator {
                 let suffix = match self.rng.gen_range(0..5) {
                     0 => {
                         // Journal style: journal.year.identifier
-                        let journals = [
-                            "nature", "science", "cell", "lancet", "nphys", "nmat",
-                        ];
+                        let journals = ["nature", "science", "cell", "lancet", "nphys", "nmat"];
                         let journal = journals[self.rng.gen_range(0..journals.len())];
                         format!("{}{:05}", journal, self.rng.gen_range(10000..99999))
                     }
@@ -724,8 +722,7 @@ impl Generator {
                         // Elsevier/journal path style: j.journal.year.month.day
                         format!(
                             "j.{}.{}.{:02}.{:03}",
-                            ["cell", "neuron", "jmb", "jtbi", "amc"]
-                                [self.rng.gen_range(0..5)],
+                            ["cell", "neuron", "jmb", "jtbi", "amc"][self.rng.gen_range(0..5)],
                             self.rng.gen_range(2000..2026),
                             self.rng.gen_range(1..13),
                             self.rng.gen_range(1..100)
