@@ -4,6 +4,31 @@ All notable changes to FineType will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-02-15
+
+### Added
+
+- **7 financial identifier types** (NNFT-052): ISIN, CUSIP, SEDOL, SWIFT/BIC, LEI, ISO 4217 currency code, currency symbol
+  - Check digit validation: Luhn (ISIN), weighted sum (CUSIP, SEDOL), ISO 7064 Mod 97-10 (LEI)
+  - All types include DuckDB transformation contracts and decompose expressions
+- **char-cnn-v4 model** trained on 159 types (up from 151) with v4 training data (129K samples)
+  - Overall accuracy: 91.62%, Top-3: 99.21%
+  - New type accuracy: LEI 96.6% F1, currency_code 94.3% F1, SEDOL 89.9% F1, CUSIP 84.6% F1
+- 8 new unit tests for finance identifier generators with known-value verification
+
+### Changed
+
+- Default model updated: `models/default` → `char-cnn-v4` (was char-cnn-v2)
+- Taxonomy expanded: 151 → 159 types
+- Test suite: 73 unit tests (was 65)
+
+### Known Issues
+
+- `currency_symbol` type has low recall (2.5%) — single Unicode characters ($ € £) are confused with `emoji` by the character-level model. Post-processing rule planned.
+- `isin` recall is 49.5% — 12-char ISINs starting with 2-letter country code confused with SWIFT/BIC codes
+
+## [0.1.2] - 2026-02-13
+
 ### Added
 
 - **Column-mode inference** with distribution-based disambiguation for ambiguous types (NNFT-012, NNFT-026)
