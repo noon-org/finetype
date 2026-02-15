@@ -45,11 +45,11 @@ jobs:
 
       - name: Download model from HuggingFace
         run: |
-          mkdir -p models/char-cnn-v2
-          cd models/char-cnn-v2
-          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/model.safetensors
-          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/labels.json
-          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v2/config.yaml
+          mkdir -p models/char-cnn-v4
+          cd models/char-cnn-v4
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v4/model.safetensors
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v4/labels.json
+          curl -sfLO https://huggingface.co/noon-org/finetype-char-cnn/resolve/main/char-cnn-v4/config.yaml
           ls -la
 
       - name: Install cross
