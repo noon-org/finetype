@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    // Models live at workspace root: ../../models/char-cnn-v2/
+    // Models live at workspace root: ../../models/default -> char-cnn-v4/
     let models_base = PathBuf::from(&manifest_dir)
         .parent()
         .unwrap()
@@ -28,7 +28,21 @@ fn main() {
 
 #[cfg(feature = "embed-models")]
 fn generate_embedded_models(models_base: &std::path::Path) {
-    let flat_dir = models_base.join("char-cnn-v2");
+    // Follow the models/default symlink to find the active model
+    let default_link = models_base.join("default");
+    let flat_dir = if default_link.exists() {
+        std::fs::read_link(&default_link)
+            .map(|target| {
+                if target.is_relative() {
+                    models_base.join(target)
+                } else {
+                    target
+                }
+            })
+            .unwrap_or_else(|_| models_base.join("char-cnn-v4"))
+    } else {
+        models_base.join("char-cnn-v4")
+    };
 
     assert!(
         flat_dir.join("model.safetensors").exists(),
